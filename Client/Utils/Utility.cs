@@ -1,4 +1,4 @@
-﻿using Comfort.Common;
+using Comfort.Common;
 using EFT;
 using EFT.Game.Spawning;
 using SPT.Reflection.Utils;
@@ -20,6 +20,8 @@ namespace acidphantasm_botplacementsystem.Utils
         public static List<ISpawnPoint> BackupPlayerSpawnPoints = new();
         public static List<ISpawnPoint> CombinedSpawnPoints = new();
         private static Dictionary<string, List<ISpawnPoint>> _cachedZoneSpawnPoints = new();
+        public static Dictionary<string, BotZone> SpawnPointToZone = new(); // point ID → zone
+        public static List<ISpawnPoint> AllBotSpawnPoints = new(); // flat list of all bot spawn points
         
         // Zones
         public static List<BotZone> CurrentMapZones = new();
@@ -27,12 +29,24 @@ namespace acidphantasm_botplacementsystem.Utils
         
         // Bot Trackers
         public static readonly HashSet<Vector3> ReservedSpawnPositions = new();
+        public static readonly HashSet<string> UsedSpawnPointIds = new(); // Track used spawn points
         public static readonly object SpawnPointLock = new object();
         public static List<Player> CachedPmcs = new();
         public static List<Player> CachedAssaultBots = new();
         public static List<Player> CachedBosses = new();
         public static List<Player> CachedConnectedPlayers = new();
         public static double BotsSpawnedPerPlayer = 0.0d;
+        
+        // Player spawn position for distance-sorted spawning
+        public static Vector3? InitialPlayerSpawnPosition = null;
+        public static Vector3? CurrentPlayerPosition = null;
+        public static Vector3? TravelDirection = null;
+        private static readonly List<Vector3> _positionHistory = new();
+        private static float _lastPositionUpdateTime = 0f;
+        private const float PositionUpdateInterval = 120f; // Sample position every 2 minutes
+        private const int MaxPositionHistory = 6;
+        private const float MinDirectionDistance = 10f; // Min movement to establish direction
+        private const float BaseNoise = 30f; // Small fixed noise for variety
 
         public static readonly Dictionary<string, string[]> MapHotSpots = new()
         {
@@ -77,12 +91,20 @@ namespace acidphantasm_botplacementsystem.Utils
             CurrentMapZones.Clear();
             
             ReservedSpawnPositions.Clear();
+            UsedSpawnPointIds.Clear();
             CachedPmcs.Clear();
             CachedAssaultBots.Clear();
             CachedBosses.Clear();
             CachedConnectedPlayers.Clear();
+            InitialPlayerSpawnPosition = null;
+            CurrentPlayerPosition = null;
+            TravelDirection = null;
+            _positionHistory.Clear();
+            _lastPositionUpdateTime = 0f;
             
             _cachedZoneSpawnPoints.Clear();
+            SpawnPointToZone.Clear();
+            AllBotSpawnPoints.Clear();
             
             BotsSpawnedPerPlayer = 0.0;
             
@@ -119,6 +141,8 @@ namespace acidphantasm_botplacementsystem.Utils
                     }
 
                     list.Add(spawnPoint);
+                    AllBotSpawnPoints.Add(spawnPoint);
+                    SpawnPointToZone[spawnPoint.Id] = botZone;
                 }
             }
             
@@ -135,6 +159,30 @@ namespace acidphantasm_botplacementsystem.Utils
             var randomIndex = UnityEngine.Random.Range(0, CachedNonSnipeZones.Count);
             return CachedNonSnipeZones[randomIndex];
         }
+        
+        /// <summary>
+        /// Scores a spawn point based on distance, direction of travel, and noise.
+        /// Points ahead of the player's travel direction score lower (favored).
+        /// Points behind score higher (deprioritized).
+        /// Falls back to distance + noise when no travel direction is established.
+        /// </summary>
+        public static float GetDirectionalScore(Vector3 spawnPoint, Vector3 playerPos)
+        {
+            var distance = Vector3.Distance(spawnPoint, playerPos);
+            var noise = UnityEngine.Random.Range(0f, BaseNoise);
+            
+            if (!TravelDirection.HasValue || Plugin.DirectionalBias <= 0f)
+                return distance + noise;
+            
+            var offset = (spawnPoint - playerPos);
+            if (offset.sqrMagnitude < 1f) return noise; // On top of player
+            
+            var dot = Vector3.Dot(offset.normalized, TravelDirection.Value);
+            // dot: 1.0 = ahead, 0 = side, -1 = behind
+            var directionalMultiplier = 1.0f - (dot * Plugin.DirectionalBias);
+            
+            return distance * directionalMultiplier + noise;
+        }
 
         public static bool IsPlayerHeadless(Player player)
         {
@@ -144,6 +192,93 @@ namespace acidphantasm_botplacementsystem.Utils
         public static bool IsPlayerHeadless(IPlayer player)
         {
             return player.Profile.Info.MemberCategory == EMemberCategory.UnitTest;
+        }
+        
+        /// <summary>
+        /// Loosely shuffles the first portion of a sorted list.
+        /// Every Nth element in the shuffle zone gets swapped with a random element
+        /// from outside the zone. Preserves general ordering while adding variety.
+        /// </summary>
+        public static void LooselyShuffle<T>(List<T> list, float shufflePercent, int shuffleStep)
+        {
+            if (list.Count < 4 || shufflePercent <= 0f || shuffleStep < 2) return;
+            
+            var shuffleZone = Mathf.Max(2, Mathf.FloorToInt(list.Count * shufflePercent));
+            var remaining = list.Count - shuffleZone;
+            if (remaining < 1) return;
+            
+            for (var i = shuffleStep - 1; i < shuffleZone; i += shuffleStep)
+            {
+                var swapIndex = shuffleZone + UnityEngine.Random.Range(0, remaining);
+                (list[i], list[swapIndex]) = (list[swapIndex], list[i]);
+            }
+        }
+        
+        /// <summary>
+        /// Periodically updates the reference position for spawn sorting based on
+        /// the current position of the first connected human player.
+        /// Call this from a frequently-running patch (e.g. NonWavesSpawnSystem.Update).
+        /// </summary>
+        public static void TryUpdatePlayerPosition()
+        {
+            if (Time.time - _lastPositionUpdateTime < PositionUpdateInterval) return;
+            if (CachedConnectedPlayers.Count == 0) return;
+            
+            var alivePlayers = CachedConnectedPlayers.Where(p => p != null && p.HealthController?.IsAlive == true).ToList();
+            if (alivePlayers.Count == 0) return;
+            
+            var player = alivePlayers[UnityEngine.Random.Range(0, alivePlayers.Count)];
+
+            Vector3 currentPos;
+            try { currentPos = player.Position; }
+            catch { return; }
+            
+            // Update positions
+            CurrentPlayerPosition = currentPos;
+            _lastPositionUpdateTime = Time.time;
+            
+            // Add to position history
+            _positionHistory.Add(currentPos);
+            if (_positionHistory.Count > MaxPositionHistory)
+                _positionHistory.RemoveAt(0);
+            
+            // Compute travel direction from averaged position history
+            if (_positionHistory.Count >= 3)
+            {
+                var halfCount = _positionHistory.Count / 2;
+                var earlyAvg = Vector3.zero;
+                var lateAvg = Vector3.zero;
+                
+                for (var i = 0; i < halfCount; i++)
+                    earlyAvg += _positionHistory[i];
+                earlyAvg /= halfCount;
+                
+                for (var i = _positionHistory.Count - halfCount; i < _positionHistory.Count; i++)
+                    lateAvg += _positionHistory[i];
+                lateAvg /= halfCount;
+                
+                var direction = lateAvg - earlyAvg;
+                if (direction.magnitude > MinDirectionDistance)
+                {
+                    TravelDirection = direction.normalized;
+                    if (Plugin.DebugLogging)
+                        Plugin.LogSource.LogInfo($"[ABPS] Travel direction updated: {TravelDirection.Value}, history: {_positionHistory.Count}");
+                }
+            }
+            
+            // Re-sort spawn point lists with directional scoring
+            PlayerSpawnPoints = PlayerSpawnPoints
+                .OrderBy(sp => GetDirectionalScore(sp.Position, currentPos))
+                .ToList();
+            BackupPlayerSpawnPoints = BackupPlayerSpawnPoints
+                .OrderBy(sp => GetDirectionalScore(sp.Position, currentPos))
+                .ToList();
+            CombinedSpawnPoints = PlayerSpawnPoints
+                .Concat(BackupPlayerSpawnPoints)
+                .ToList();
+
+            if (Plugin.DebugLogging)
+                Plugin.LogSource.LogInfo($"[ABPS] Updated spawn reference position to {currentPos}");
         }
     }
 }

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -25,15 +25,11 @@ namespace acidphantasm_botplacementsystem.Patches
             {
                 if (!data.IsValidSpawnType(WildSpawnType.assault) || pointsToSpawn != null) return;
 
-                var botType = data.Profiles[0].Info.Settings.Role;
                 var mapName = Utility.CurrentLocation.ToLower();
                 var pmcDistance = GetDistanceForMap(mapName);
-
-                var mapHasHotzone = DoesMapHaveHotzones(mapName);
-                var hotZoneSelected = mapHasHotzone && IsZoneHotzone(mapName, botZone.NameZone);
                 var isSmallMap = mapName.Contains("factory") || mapName.Contains("sandbox") ||
                                  mapName.Contains("labyrinth") || mapName.Contains("laboratory");
-                var scavDistance = hotZoneSelected ? 10f : isSmallMap ? 20f : 40f;
+                var scavDistance = isSmallMap ? 20f : 40f;
 
                 List<Player> pmcList;
                 List<Player> scavList;
@@ -43,46 +39,24 @@ namespace acidphantasm_botplacementsystem.Patches
                     scavList = Utility.CachedAssaultBots.ToList();
                 }
 
-                pointsToSpawn = GetValidSpawnPoints(botZone, mapName, pmcList, pmcDistance, scavList, scavDistance,
-                    botType);
-
-                if (!isSmallMap)
+                // Flat global search: score ALL spawn points, pick best valid one, assign zone
+                var bestPoint = FindBestGlobalSpawnPoint(pmcList, pmcDistance, scavList, scavDistance);
+                
+                if (bestPoint != null)
                 {
-                    var scavsInZone = __instance.BotGame.BotsController.Bots.GetListByZone(botZone)
-                        .Count(x => x.IsRole(WildSpawnType.assault));
-
-                    if (scavsInZone >= Plugin.ZoneScavCap && (mapHasHotzone && !hotZoneSelected || !mapHasHotzone) ||
-                        scavsInZone >= Plugin.HotzoneScavCap && mapHasHotzone && hotZoneSelected)
+                    // Look up which zone this point belongs to and override
+                    if (Utility.SpawnPointToZone.TryGetValue(bestPoint.Id, out var pointZone))
                     {
-                        var newBotZone = Utility.GetNewValidBotZone();
-                        pointsToSpawn = GetNewSpawnPoints(mapName, botZone, newBotZone, mapHasHotzone, pmcList, pmcDistance, scavList, scavDistance, botType);
-                        botZone = newBotZone;
+                        botZone = pointZone;
                     }
-
-                    if (pointsToSpawn.Count != 0)
-                    {
-                        return;
-                    }
-
-                    var validZones = Utility.CachedNonSnipeZones;
-
-                    for (var i = 0; i < Math.Min(5, validZones.Count); i++)
-                    {
-                        var newBotZone = validZones[i];
-                        pointsToSpawn = GetNewSpawnPoints(mapName, botZone, newBotZone, mapHasHotzone, pmcList,
-                            pmcDistance, scavList, scavDistance, botType);
-                        botZone = newBotZone;
-                        if (pointsToSpawn.Count > 0)
-                            break;
-                    }
-
-                    if (pointsToSpawn.Count != 0)
-                    {
-                        return;
-                    }
-
-                    Plugin.LogSource.LogInfo(
-                        $"{data.Id} - {botZone.NameZone} - Returning null points, no valid points in distance");
+                    
+                    Utility.UsedSpawnPointIds.Add(bestPoint.Id);
+                    pointsToSpawn = new List<ISpawnPoint> { bestPoint };
+                }
+                else
+                {
+                    if (Plugin.DebugLogging)
+                        Plugin.LogSource.LogInfo($"{data.Id} - No valid spawn points found globally");
                     pointsToSpawn = null;
                 }
             }
@@ -92,29 +66,46 @@ namespace acidphantasm_botplacementsystem.Patches
             }
         }
 
-        private static List<ISpawnPoint> GetValidSpawnPoints(BotZone botZone, string location, IReadOnlyCollection<Player> pmcList, float pmcDistance, IReadOnlyCollection<Player> scavList, float scavDistance, WildSpawnType botType)
+        /// <summary>
+        /// Searches ALL spawn points across ALL zones, scored by directional bias.
+        /// Returns the best valid point, or null if none found.
+        /// </summary>
+        private static ISpawnPoint FindBestGlobalSpawnPoint(IReadOnlyCollection<Player> pmcList, float pmcDistance, IReadOnlyCollection<Player> scavList, float scavDistance)
         {
-            var validSpawnPoints = new List<ISpawnPoint>();
-            var allSpawnPoints = Utility.GetZoneSpawnPoints(botZone);
-            if (allSpawnPoints.Count == 0)
+            var allPoints = Utility.AllBotSpawnPoints;
+            if (allPoints.Count == 0) return null;
+
+            // Score and sort all points directionally
+            List<ISpawnPoint> sorted;
+            if (Utility.CurrentPlayerPosition.HasValue)
             {
-                // fallback to vanilla
-                allSpawnPoints = botZone.SpawnPoints
-                    .Where(x => x.Categories == ESpawnCategoryMask.All || x.Categories.ContainBotCategory())
+                var playerPos = Utility.CurrentPlayerPosition.Value;
+                sorted = allPoints
+                    .OrderBy(sp => Utility.GetDirectionalScore(sp.Position, playerPos))
+                    .ToList();
+            }
+            else
+            {
+                sorted = allPoints
                     .OrderBy(_ => GClass856.Random(0f, 1f))
                     .ToList();
             }
 
-            foreach (var checkPoint in allSpawnPoints)
+            // Loosely shuffle the ahead portion for variety
+            Utility.LooselyShuffle(sorted, Plugin.ShufflePercent, Plugin.ShuffleStep);
+
+            foreach (var point in sorted)
             {
-                if (!IsValid(checkPoint, pmcList, pmcDistance) || !IsValid(checkPoint, scavList, scavDistance))
-                {
+                if (Utility.UsedSpawnPointIds.Contains(point.Id))
                     continue;
-                }
-                validSpawnPoints.Add(checkPoint); 
-                return validSpawnPoints;
+                    
+                if (!IsValid(point, pmcList, pmcDistance) || !IsValid(point, scavList, scavDistance))
+                    continue;
+
+                return point;
             }
-            return validSpawnPoints;
+
+            return null;
         }
         private static bool IsValid(ISpawnPoint spawnPoint, IReadOnlyCollection<Player> players, float distance)
         {
@@ -183,14 +174,6 @@ namespace acidphantasm_botplacementsystem.Patches
         private static bool IsZoneHotzone(string mapName, string botZone)
         {
             return Utility.MapHotSpots[mapName].Contains(botZone);
-        }
-        private static List<ISpawnPoint> GetNewSpawnPoints(string mapName, BotZone oldBotZone, BotZone newBotZone, bool mapHasHotzone, IReadOnlyCollection<Player> pmcList, float pmcDistance, IReadOnlyCollection<Player> scavList, float scavDistance, WildSpawnType botType)
-        {
-            var hotZoneSelected = mapHasHotzone && IsZoneHotzone(mapName, newBotZone.NameZone);
-            if (mapHasHotzone && hotZoneSelected) scavDistance = 10f;
-
-            var newPoints = GetValidSpawnPoints(newBotZone, mapName, pmcList, pmcDistance, scavList, scavDistance, botType);
-            return newPoints;
         }
     }
 }

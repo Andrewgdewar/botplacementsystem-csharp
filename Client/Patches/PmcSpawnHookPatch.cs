@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using acidphantasm_botplacementsystem.Spawning;
 using acidphantasm_botplacementsystem.Utils;
 using EFT;
@@ -140,7 +140,7 @@ namespace acidphantasm_botplacementsystem.Patches
             var validSpawnPoints = new List<ISpawnPoint>();
 
             var list = Utility.PlayerSpawnPoints;
-            list = list.OrderBy(_ => GClass856.Random(0f, 1f)).ToList();
+            // Lists are pre-sorted by distance from player spawn at raid start
 
             var foundInitialPoint = false;
 
@@ -178,7 +178,7 @@ namespace acidphantasm_botplacementsystem.Patches
             ISpawnPoint firstPoint = null;
 
             var alternativeList = backupToPlayer ? Utility.BackupPlayerSpawnPoints : Utility.CombinedSpawnPoints;
-            alternativeList = alternativeList.OrderBy(_ => GClass856.Random(0f, 1f)).ToList();
+            // Lists are pre-sorted by distance from player spawn at raid start
 
             foreach (var checkPoint in alternativeList)
             {

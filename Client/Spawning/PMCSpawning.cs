@@ -1,4 +1,4 @@
-﻿using Comfort.Common;
+using Comfort.Common;
 using EFT;
 using EFT.Game.Spawning;
 using System;
@@ -44,6 +44,32 @@ namespace acidphantasm_botplacementsystem.Spawning
                         Plugin.LogSource.LogInfo($"[ABPS] Caching connected player: {player.Profile.Info.Nickname}");
                     
                     Utility.CachedConnectedPlayers.Add(player);
+                    
+                    // Capture the first human player's spawn position for distance-sorted spawning
+                    if (Utility.InitialPlayerSpawnPosition == null)
+                    {
+                        Utility.InitialPlayerSpawnPosition = player.Position;
+                        Utility.CurrentPlayerPosition = player.Position;
+                        
+                        if (Plugin.DebugLogging)
+                            Plugin.LogSource.LogInfo($"[ABPS] Captured initial player spawn position: {player.Position}");
+                        
+                        // Pre-sort spawn point lists by distance (no direction yet at raid start)
+                        var spawnPos = player.Position;
+                        Utility.PlayerSpawnPoints = Utility.PlayerSpawnPoints
+                            .OrderBy(sp => Utility.GetDirectionalScore(sp.Position, spawnPos))
+                            .ToList();
+                        Utility.BackupPlayerSpawnPoints = Utility.BackupPlayerSpawnPoints
+                            .OrderBy(sp => Utility.GetDirectionalScore(sp.Position, spawnPos))
+                            .ToList();
+                        Utility.CombinedSpawnPoints = Utility.PlayerSpawnPoints
+                            .Concat(Utility.BackupPlayerSpawnPoints)
+                            .ToList();
+                        
+                        if (Plugin.DebugLogging)
+                            Plugin.LogSource.LogInfo($"[ABPS] Sorted {Utility.PlayerSpawnPoints.Count} player + {Utility.BackupPlayerSpawnPoints.Count} backup spawn points");
+                    }
+                    
                     if (player.Profile.Side is EPlayerSide.Bear or EPlayerSide.Usec)
                     {
                         Utility.CachedPmcs.Add(player);

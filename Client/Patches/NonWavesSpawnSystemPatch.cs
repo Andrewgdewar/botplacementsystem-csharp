@@ -1,4 +1,4 @@
-﻿using acidphantasm_botplacementsystem.Utils;
+using acidphantasm_botplacementsystem.Utils;
 using EFT;
 using EFT.Game.Spawning;
 using HarmonyLib;
@@ -48,6 +48,9 @@ namespace acidphantasm_botplacementsystem.Patches
             ref GClass1881<BotDifficulty> difficultyWeights = ref ___gclass1881_0;
 
             if (__instance == null || !isActive) return true;
+
+            // Periodically update spawn reference position as player moves
+            Utility.TryUpdatePlayerPosition();
 
             if (___abstractGame_0.PastTime < (float)___location_0.BotStart || ___abstractGame_0.PastTime > (float)___location_0.BotStop)
                 return false;

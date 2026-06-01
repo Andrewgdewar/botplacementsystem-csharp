@@ -1,4 +1,4 @@
-﻿using BepInEx.Configuration;
+using BepInEx.Configuration;
 using System;
 
 namespace acidphantasm_botplacementsystem
@@ -68,6 +68,9 @@ namespace acidphantasm_botplacementsystem
         
         private const string DebugConfig = "6. Debug Settings";
         private static ConfigEntry<bool> _enableDebug;
+        private static ConfigEntry<float> _directionalBias;
+        private static ConfigEntry<float> _shufflePercent;
+        private static ConfigEntry<int> _shuffleStep;
 
         public static void InitAbpsConfig(ConfigFile config)
         {
@@ -572,6 +575,36 @@ namespace acidphantasm_botplacementsystem
                     new ConfigurationManagerAttributes { IsAdvanced = true, Order = _loadOrder-- }));
             Plugin.DebugLogging = _enableDebug.Value;
             _enableDebug.SettingChanged += ABPS_SettingChanged;
+            
+            _directionalBias = config.Bind(
+                GeneralConfig,
+                "Directional Bias",
+                0.8f,
+                new ConfigDescription("How much spawns favor the direction you're traveling. 0 = distance only, 0.5 = moderate bias, 1.0 = strong bias. Spawns ahead of you are favored, behind deprioritized.",
+                    new AcceptableValueRange<float>(0f, 1f),
+                    new ConfigurationManagerAttributes { Order = _loadOrder-- }));
+            Plugin.DirectionalBias = _directionalBias.Value;
+            _directionalBias.SettingChanged += ABPS_SettingChanged;
+            
+            _shufflePercent = config.Bind(
+                GeneralConfig,
+                "Shuffle Percent",
+                0.5f,
+                new ConfigDescription("What portion of the ahead-sorted spawn list gets loosely shuffled. 0.5 = top 50%, 1.0 = entire list.",
+                    new AcceptableValueRange<float>(0f, 1f),
+                    new ConfigurationManagerAttributes { Order = _loadOrder-- }));
+            Plugin.ShufflePercent = _shufflePercent.Value;
+            _shufflePercent.SettingChanged += ABPS_SettingChanged;
+            
+            _shuffleStep = config.Bind(
+                GeneralConfig,
+                "Shuffle Step",
+                3,
+                new ConfigDescription("Every Nth element in the shuffle zone gets swapped with a random element from outside it. Lower = more shuffling.",
+                    new AcceptableValueRange<int>(2, 10),
+                    new ConfigurationManagerAttributes { Order = _loadOrder-- }));
+            Plugin.ShuffleStep = _shuffleStep.Value;
+            _shuffleStep.SettingChanged += ABPS_SettingChanged;
         }
         private static void ABPS_SettingChanged(object sender, EventArgs e)
         {
@@ -627,6 +660,9 @@ namespace acidphantasm_botplacementsystem
             Plugin.LabyrinthScavSpawnDistanceCheck = _labyrinthScavSpawnDistanceCheck.Value;
             
             Plugin.DebugLogging = _enableDebug.Value;
+            Plugin.DirectionalBias = _directionalBias.Value;
+            Plugin.ShufflePercent = _shufflePercent.Value;
+            Plugin.ShuffleStep = _shuffleStep.Value;
         }
     }
 }

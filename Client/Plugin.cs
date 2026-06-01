@@ -1,4 +1,4 @@
-﻿using acidphantasm_botplacementsystem.Patches;
+using acidphantasm_botplacementsystem.Patches;
 using BepInEx;
 using BepInEx.Bootstrap;
 using BepInEx.Logging;
@@ -68,6 +68,10 @@ namespace acidphantasm_botplacementsystem
         public static float LabyrinthScavSpawnDistanceCheck;
 
         public static bool DebugLogging;
+
+        public static float DirectionalBias;
+        public static float ShufflePercent;
+        public static int ShuffleStep;
 
         public static BotSpawner BotSpawnerInstance;
 
