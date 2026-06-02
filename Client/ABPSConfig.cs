@@ -599,7 +599,7 @@ namespace acidphantasm_botplacementsystem
             _shuffleStep = config.Bind(
                 GeneralConfig,
                 "Shuffle Step",
-                3,
+                4,
                 new ConfigDescription("Every Nth element in the shuffle zone gets swapped with a random element from outside it. Lower = more shuffling.",
                     new AcceptableValueRange<int>(2, 10),
                     new ConfigurationManagerAttributes { Order = _loadOrder-- }));

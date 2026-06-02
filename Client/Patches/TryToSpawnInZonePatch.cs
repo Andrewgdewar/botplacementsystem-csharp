@@ -19,7 +19,7 @@ namespace acidphantasm_botplacementsystem.Patches
         }
 
         [PatchPrefix]
-        private static void PatchPrefix(BotSpawner __instance, BotZone botZone, BotCreationDataClass data, bool withCheckMinMax, bool newWave, ref List<ISpawnPoint> pointsToSpawn, bool forcedSpawn = false)
+        private static void PatchPrefix(BotSpawner __instance, ref BotZone botZone, BotCreationDataClass data, bool withCheckMinMax, bool newWave, ref List<ISpawnPoint> pointsToSpawn, bool forcedSpawn = false)
         {
             try
             {
@@ -50,7 +50,6 @@ namespace acidphantasm_botplacementsystem.Patches
                         botZone = pointZone;
                     }
                     
-                    Utility.UsedSpawnPointIds.Add(bestPoint.Id);
                     pointsToSpawn = new List<ISpawnPoint> { bestPoint };
                 }
                 else
@@ -96,9 +95,6 @@ namespace acidphantasm_botplacementsystem.Patches
 
             foreach (var point in sorted)
             {
-                if (Utility.UsedSpawnPointIds.Contains(point.Id))
-                    continue;
-                    
                 if (!IsValid(point, pmcList, pmcDistance) || !IsValid(point, scavList, scavDistance))
                     continue;
 
