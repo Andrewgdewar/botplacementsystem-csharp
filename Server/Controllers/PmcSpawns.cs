@@ -31,11 +31,9 @@ public class PmcSpawns(
             pmcSpawnInfo.AddRange(GenerateStartingPmcWaves(location));
         }
 
-        var canGenerateWaves = ModConfig.Config.PmcConfig.Waves.Enable && (location != "labyrinth" || ModConfig.Config.PmcConfig.Waves.AllowPmcsOnLabyrinth);
-        if (canGenerateWaves)
-        {
-            pmcSpawnInfo.AddRange(GeneratePmcWaves(location, escapeTimeLimit));
-        }
+        // Wave PMCs are now client-driven (see NonWavesSpawnSystemPatch.TryToSpawnPmc).
+        // The server only ships starting PMCs in BossLocationSpawn form; everything else
+        // is decided on the headless tick-by-tick.
 
         return pmcSpawnInfo;
     }

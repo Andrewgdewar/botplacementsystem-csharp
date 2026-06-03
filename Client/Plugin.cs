@@ -109,6 +109,17 @@ namespace acidphantasm_botplacementsystem
         public static float ScavScheduleMidBudgetPercent;
         public static float ScavScheduleFullPercent;
 
+        // PMC tick (client-driven wave PMCs)
+        public static float PmcScheduleStartPercent;
+        public static float PmcScheduleMidTimePercent;
+        public static float PmcScheduleMidBudgetPercent;
+        public static float PmcScheduleFullPercent;
+        public static float PmcSpawnAttemptInterval;
+        public static int PmcGroupChance;
+        public static int PmcMaxGroupSize;
+        public static int UsecChancePercent;
+        public static float PmcStartDelaySeconds;
+
         public static BotSpawner BotSpawnerInstance;
 
 

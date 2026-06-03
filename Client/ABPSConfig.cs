@@ -107,6 +107,15 @@ namespace acidphantasm_botplacementsystem
         private static ConfigEntry<float> _scavScheduleMidTimePercent;
         private static ConfigEntry<float> _scavScheduleMidBudgetPercent;
         private static ConfigEntry<float> _scavScheduleFullPercent;
+        private static ConfigEntry<float> _pmcScheduleStartPercent;
+        private static ConfigEntry<float> _pmcScheduleMidTimePercent;
+        private static ConfigEntry<float> _pmcScheduleMidBudgetPercent;
+        private static ConfigEntry<float> _pmcScheduleFullPercent;
+        private static ConfigEntry<float> _pmcSpawnAttemptInterval;
+        private static ConfigEntry<int> _pmcGroupChance;
+        private static ConfigEntry<int> _pmcMaxGroupSize;
+        private static ConfigEntry<int> _usecChancePercent;
+        private static ConfigEntry<float> _pmcStartDelaySeconds;
 
         private static ConfigEntry<int> BindMaxPmc(ConfigFile config, string label, int defaultValue, string description)
         {
@@ -866,6 +875,97 @@ namespace acidphantasm_botplacementsystem
                     new ConfigurationManagerAttributes { Order = _loadOrder-- }));
             Plugin.ScavScheduleFullPercent = _scavScheduleFullPercent.Value;
             _scavScheduleFullPercent.SettingChanged += ABPS_SettingChanged;
+
+            // PMC tick (client-driven wave PMCs) — same curve shape as scavs but with separate values.
+            _pmcScheduleStartPercent = config.Bind(
+                GeneralConfig,
+                "PMC Schedule Start Budget Pct",
+                0.20f,
+                new ConfigDescription("Fraction of the per-map PMC budget unlocked at raid start. Higher = more PMCs available early.",
+                    new AcceptableValueRange<float>(0f, 1f),
+                    new ConfigurationManagerAttributes { Order = _loadOrder-- }));
+            Plugin.PmcScheduleStartPercent = _pmcScheduleStartPercent.Value;
+            _pmcScheduleStartPercent.SettingChanged += ABPS_SettingChanged;
+
+            _pmcScheduleMidTimePercent = config.Bind(
+                GeneralConfig,
+                "PMC Schedule Mid Time Pct",
+                0.40f,
+                new ConfigDescription("Raid time (as fraction of BotStart..BotStop) at which the mid PMC budget point is hit.",
+                    new AcceptableValueRange<float>(0.05f, 0.95f),
+                    new ConfigurationManagerAttributes { Order = _loadOrder-- }));
+            Plugin.PmcScheduleMidTimePercent = _pmcScheduleMidTimePercent.Value;
+            _pmcScheduleMidTimePercent.SettingChanged += ABPS_SettingChanged;
+
+            _pmcScheduleMidBudgetPercent = config.Bind(
+                GeneralConfig,
+                "PMC Schedule Mid Budget Pct",
+                0.60f,
+                new ConfigDescription("Fraction of the per-map PMC budget unlocked at the mid time point. Should be greater than Start.",
+                    new AcceptableValueRange<float>(0f, 1f),
+                    new ConfigurationManagerAttributes { Order = _loadOrder-- }));
+            Plugin.PmcScheduleMidBudgetPercent = _pmcScheduleMidBudgetPercent.Value;
+            _pmcScheduleMidBudgetPercent.SettingChanged += ABPS_SettingChanged;
+
+            _pmcScheduleFullPercent = config.Bind(
+                GeneralConfig,
+                "PMC Schedule Full Time Pct",
+                0.70f,
+                new ConfigDescription("Raid time (as fraction of BotStart..BotStop) at which 100% of the PMC budget is unlocked.",
+                    new AcceptableValueRange<float>(0.1f, 1f),
+                    new ConfigurationManagerAttributes { Order = _loadOrder-- }));
+            Plugin.PmcScheduleFullPercent = _pmcScheduleFullPercent.Value;
+            _pmcScheduleFullPercent.SettingChanged += ABPS_SettingChanged;
+
+            _pmcSpawnAttemptInterval = config.Bind(
+                GeneralConfig,
+                "PMC Spawn Attempt Interval",
+                45f,
+                new ConfigDescription("Minimum seconds between PMC spawn attempts. Lower = more frequent attempts (still gated by curve + cap).",
+                    new AcceptableValueRange<float>(10f, 300f),
+                    new ConfigurationManagerAttributes { Order = _loadOrder-- }));
+            Plugin.PmcSpawnAttemptInterval = _pmcSpawnAttemptInterval.Value;
+            _pmcSpawnAttemptInterval.SettingChanged += ABPS_SettingChanged;
+
+            _pmcGroupChance = config.Bind(
+                GeneralConfig,
+                "PMC Group Chance",
+                20,
+                new ConfigDescription("Percent chance a PMC spawn rolls as a group (vs solo).",
+                    new AcceptableValueRange<int>(0, 100),
+                    new ConfigurationManagerAttributes { Order = _loadOrder-- }));
+            Plugin.PmcGroupChance = _pmcGroupChance.Value;
+            _pmcGroupChance.SettingChanged += ABPS_SettingChanged;
+
+            _pmcMaxGroupSize = config.Bind(
+                GeneralConfig,
+                "PMC Max Group Size",
+                2,
+                new ConfigDescription("Max additional PMCs in a group (total group = 1 + this).",
+                    new AcceptableValueRange<int>(1, 5),
+                    new ConfigurationManagerAttributes { Order = _loadOrder-- }));
+            Plugin.PmcMaxGroupSize = _pmcMaxGroupSize.Value;
+            _pmcMaxGroupSize.SettingChanged += ABPS_SettingChanged;
+
+            _usecChancePercent = config.Bind(
+                GeneralConfig,
+                "USEC Chance Percent",
+                50,
+                new ConfigDescription("Percent chance a PMC spawn is USEC (vs BEAR).",
+                    new AcceptableValueRange<int>(0, 100),
+                    new ConfigurationManagerAttributes { Order = _loadOrder-- }));
+            Plugin.UsecChancePercent = _usecChancePercent.Value;
+            _usecChancePercent.SettingChanged += ABPS_SettingChanged;
+
+            _pmcStartDelaySeconds = config.Bind(
+                GeneralConfig,
+                "PMC Start Delay Seconds",
+                60f,
+                new ConfigDescription("Grace period at raid start before any wave PMCs are considered, so starting PMCs play out first.",
+                    new AcceptableValueRange<float>(0f, 600f),
+                    new ConfigurationManagerAttributes { Order = _loadOrder-- }));
+            Plugin.PmcStartDelaySeconds = _pmcStartDelaySeconds.Value;
+            _pmcStartDelaySeconds.SettingChanged += ABPS_SettingChanged;
         }
         private static void ABPS_SettingChanged(object sender, EventArgs e)
         {
@@ -960,6 +1060,16 @@ namespace acidphantasm_botplacementsystem
             Plugin.ScavScheduleMidTimePercent = _scavScheduleMidTimePercent.Value;
             Plugin.ScavScheduleMidBudgetPercent = _scavScheduleMidBudgetPercent.Value;
             Plugin.ScavScheduleFullPercent = _scavScheduleFullPercent.Value;
+
+            Plugin.PmcScheduleStartPercent = _pmcScheduleStartPercent.Value;
+            Plugin.PmcScheduleMidTimePercent = _pmcScheduleMidTimePercent.Value;
+            Plugin.PmcScheduleMidBudgetPercent = _pmcScheduleMidBudgetPercent.Value;
+            Plugin.PmcScheduleFullPercent = _pmcScheduleFullPercent.Value;
+            Plugin.PmcSpawnAttemptInterval = _pmcSpawnAttemptInterval.Value;
+            Plugin.PmcGroupChance = _pmcGroupChance.Value;
+            Plugin.PmcMaxGroupSize = _pmcMaxGroupSize.Value;
+            Plugin.UsecChancePercent = _usecChancePercent.Value;
+            Plugin.PmcStartDelaySeconds = _pmcStartDelaySeconds.Value;
         }
     }
 }

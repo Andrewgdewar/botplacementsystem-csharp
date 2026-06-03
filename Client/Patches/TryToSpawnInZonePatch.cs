@@ -29,7 +29,11 @@ namespace acidphantasm_botplacementsystem.Patches
         {
             try
             {
-                if (!data.IsValidSpawnType(WildSpawnType.assault) || pointsToSpawn != null) return;
+                if (pointsToSpawn != null) return;
+
+                var isScav = data.IsValidSpawnType(WildSpawnType.assault);
+                var isPmc = data.IsValidSpawnType(WildSpawnType.pmcUSEC) || data.IsValidSpawnType(WildSpawnType.pmcBEAR);
+                if (!isScav && !isPmc) return;
 
                 var mapName = Utility.CurrentLocation.ToLower();
                 var pmcDistance = GetDistanceForMap(mapName);
@@ -45,9 +49,10 @@ namespace acidphantasm_botplacementsystem.Patches
                     scavList = Utility.CachedAssaultBots.ToList();
                 }
 
-                // Flat global search: score ALL spawn points, pick best valid one, assign zone
-                var bestPoint = FindBestGlobalSpawnPoint(pmcList, pmcDistance, scavList, scavDistance);
-                
+                ISpawnPoint bestPoint = isPmc
+                    ? FindBestPmcSpawnPoint(pmcList, pmcDistance, scavList, scavDistance)
+                    : FindBestGlobalSpawnPoint(pmcList, pmcDistance, scavList, scavDistance);
+
                 if (bestPoint != null)
                 {
                     // Look up which zone this point belongs to and override
@@ -61,7 +66,7 @@ namespace acidphantasm_botplacementsystem.Patches
                 else
                 {
                     if (Plugin.DebugLogging)
-                        Plugin.LogSource.LogInfo($"{data.Id} - No valid spawn points found globally");
+                        Plugin.LogSource.LogInfo($"{data.Id} - No valid spawn points found ({(isPmc ? "PMC" : "scav")})");
                     pointsToSpawn = null;
                 }
             }
@@ -69,6 +74,72 @@ namespace acidphantasm_botplacementsystem.Patches
             {
                 Plugin.LogSource.LogError($"TryToSpawnInZonePatch EXCEPTION: {ex.GetType().Name}: {ex.Message}\n{ex.StackTrace}");
             }
+        }
+
+        /// <summary>
+        /// PMC spawn point selection. Uses Utility.PlayerSpawnPoints (locked at raid start
+        /// with PmcSpawnNoise) and picks a slot deterministically based on
+        /// PmcsSpawnedThisRaid / maxPmcs so PMCs spread across the sorted list.
+        /// </summary>
+        private static ISpawnPoint FindBestPmcSpawnPoint(IReadOnlyCollection<Player> pmcList, float pmcDistance, IReadOnlyCollection<Player> scavList, float scavDistance)
+        {
+            var source = Utility.PlayerSpawnPoints;
+            if (source == null || source.Count == 0) return null;
+
+            // Skip closest N% (PMC), don't re-sort (list is locked from raid start).
+            var skipCount = (int)Math.Floor(source.Count * Plugin.PmcSkipClosestPercent);
+            var list = (skipCount > 0 && skipCount < source.Count)
+                ? source.GetRange(skipCount, source.Count - skipCount)
+                : new List<ISpawnPoint>(source);
+
+            var mapName = (Utility.CurrentLocation ?? "default").ToLower();
+            var maxPmcs = GetMaxPmcsForMapForPmcSelection(mapName);
+            var startIndex = 0;
+            if (maxPmcs > 0)
+            {
+                var targetFraction = Math.Min(0.999f, (float)Utility.PmcsSpawnedThisRaid / maxPmcs);
+                startIndex = Math.Min(list.Count - 1, (int)Math.Floor(list.Count * targetFraction));
+            }
+
+            // Forward search from startIndex.
+            for (var i = startIndex; i < list.Count; i++)
+            {
+                var p = list[i];
+                if (Utility.UsedSpawnPointIds.Contains(p.Id)) continue;
+                if (!IsValid(p, pmcList, pmcDistance) || !IsValid(p, scavList, scavDistance)) continue;
+                Utility.UsedSpawnPointIds.Add(p.Id);
+                return p;
+            }
+            // Wrap to beginning of usable list.
+            for (var i = 0; i < startIndex; i++)
+            {
+                var p = list[i];
+                if (Utility.UsedSpawnPointIds.Contains(p.Id)) continue;
+                if (!IsValid(p, pmcList, pmcDistance) || !IsValid(p, scavList, scavDistance)) continue;
+                Utility.UsedSpawnPointIds.Add(p.Id);
+                return p;
+            }
+            return null;
+        }
+
+        private static int GetMaxPmcsForMapForPmcSelection(string mapName)
+        {
+            return mapName switch
+            {
+                "bigmap" => Plugin.CustomsMaxPmcs,
+                "factory4_day" or "factory4_night" => Plugin.FactoryMaxPmcs,
+                "interchange" => Plugin.InterchangeMaxPmcs,
+                "laboratory" => Plugin.LabsMaxPmcs,
+                "lighthouse" => Plugin.LighthouseMaxPmcs,
+                "rezervbase" => Plugin.ReserveMaxPmcs,
+                "sandbox" => Plugin.GroundZeroMaxPmcs,
+                "sandbox_high" => Plugin.GroundZeroHighMaxPmcs,
+                "shoreline" => Plugin.ShorelineMaxPmcs,
+                "tarkovstreets" => Plugin.StreetsMaxPmcs,
+                "woods" => Plugin.WoodsMaxPmcs,
+                "labyrinth" => Plugin.LabyrinthMaxPmcs,
+                _ => 0,
+            };
         }
 
         /// <summary>

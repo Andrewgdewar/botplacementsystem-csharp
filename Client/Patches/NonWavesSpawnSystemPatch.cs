@@ -55,6 +55,10 @@ namespace acidphantasm_botplacementsystem.Patches
             if (___abstractGame_0.PastTime < (float)___location_0.BotStart || ___abstractGame_0.PastTime > (float)___location_0.BotStop)
                 return false;
 
+            // PMC tick runs independently of the scav active/inactive cycle so PMC pacing
+            // isn't affected by scav quiet windows. Has its own attempt interval + gates.
+            TryToSpawnPmc(___botsController_0, ___abstractGame_0, ___location_0, ___gclass1881_0);
+
             if (nextWindowToggleTime.Equals(null) || nextWindowToggleTime <= ___abstractGame_0.PastTime)
             {
                 isInSpawnWindow = !isInSpawnWindow;
@@ -235,6 +239,115 @@ namespace acidphantasm_botplacementsystem.Patches
             botsController.DestroyInfo(botPlayer);
             UnityEngine.Object.DestroyImmediate(botToDespawn.gameObject);
             UnityEngine.Object.Destroy(botToDespawn);
+        }
+
+        private static void TryToSpawnPmc(BotsController botsController, AbstractGame abstractGame, LocationSettingsClass.Location location, GClass1881<BotDifficulty> difficultyWeights)
+        {
+            // Per-map cap (config). If unknown map, bail.
+            var mapName = (Utility.CurrentLocation ?? "default").ToLower();
+            var maxPmcs = GetMaxPmcsForMap(mapName);
+            if (maxPmcs <= 0) return;
+
+            // Hard cap: never exceed per-map PMC total for this raid.
+            if (Utility.PmcsSpawnedThisRaid >= maxPmcs) return;
+
+            // Grace period: give starting PMCs (Time=1, server-scheduled) a head start.
+            var raidElapsed = abstractGame.PastTime - location.BotStart;
+            if (raidElapsed < Plugin.PmcStartDelaySeconds) return;
+
+            // Per-PMC attempt interval (independent from scav interval).
+            if (Time.time - Utility.LastPmcSpawnAttemptTime < Plugin.PmcSpawnAttemptInterval) return;
+            Utility.LastPmcSpawnAttemptTime = Time.time;
+
+            // Schedule curve: budget unlocks progressively over raid time.
+            var botStart = (float)location.BotStart;
+            var botStop = (float)location.BotStop;
+            if (botStop > botStart)
+            {
+                var elapsedFrac = Math.Min(1.0, Math.Max(0.0, (abstractGame.PastTime - botStart) / (botStop - botStart)));
+                var startBudget = Plugin.PmcScheduleStartPercent;
+                var midTime = Plugin.PmcScheduleMidTimePercent;
+                var midBudget = Math.Max(Plugin.PmcScheduleStartPercent, Plugin.PmcScheduleMidBudgetPercent);
+                var fullTime = Math.Max(midTime + 0.001, Plugin.PmcScheduleFullPercent);
+
+                double allowedFrac;
+                if (elapsedFrac >= fullTime)
+                    allowedFrac = 1.0;
+                else if (elapsedFrac <= midTime)
+                {
+                    var segment = midTime > 0 ? elapsedFrac / midTime : 1.0;
+                    allowedFrac = startBudget + (midBudget - startBudget) * segment;
+                }
+                else
+                {
+                    var segment = (elapsedFrac - midTime) / Math.Max(0.0001, fullTime - midTime);
+                    allowedFrac = midBudget + (1.0 - midBudget) * segment;
+                }
+
+                if (Utility.PmcsSpawnedThisRaid >= maxPmcs * allowedFrac) return;
+            }
+
+            // Group roll. Group size is additional members beyond the leader.
+            var groupSize = 0;
+            if (Plugin.PmcMaxGroupSize > 1 && Utility.PmcsSpawnedThisRaid + 1 < maxPmcs)
+            {
+                if (UnityEngine.Random.Range(0, 100) < Plugin.PmcGroupChance)
+                {
+                    groupSize = UnityEngine.Random.Range(1, Plugin.PmcMaxGroupSize + 1);
+                    var remaining = maxPmcs - Utility.PmcsSpawnedThisRaid - 1;
+                    if (groupSize > remaining) groupSize = Math.Max(0, remaining);
+                }
+            }
+            var totalBots = 1 + groupSize;
+
+            // USEC vs BEAR roll.
+            var isUsec = UnityEngine.Random.Range(0, 100) < Plugin.UsecChancePercent;
+            var spawnType = isUsec ? WildSpawnType.pmcUSEC : WildSpawnType.pmcBEAR;
+            var side = isUsec ? EPlayerSide.Usec : EPlayerSide.Bear;
+
+            // Pick a zone (any non-snipe). The actual spawn point is overridden by
+            // TryToSpawnInZonePatch when the wave fires.
+            if (Utility.CurrentMapZones.Count == 0)
+                Utility.CurrentMapZones = botsController.BotSpawner.AllBotZones.ToList();
+            var botZone = GetValidBotZone(spawnType, totalBots, botsController.BotSpawner.AllBotZones, mapName, botsController);
+
+            botsController.ActivateBotsByWave(new BotWaveDataClass
+            {
+                BotsCount = totalBots,
+                Time = Time.time,
+                Difficulty = difficultyWeights.Random(),
+                IsPlayers = false,
+                Side = side,
+                WildSpawnType = spawnType,
+                SpawnAreaName = botZone,
+                WithCheckMinMax = false,
+                ChanceGroup = 0,
+            });
+
+            Utility.PmcsSpawnedThisRaid += totalBots;
+
+            if (Plugin.DebugLogging)
+                Plugin.LogSource.LogInfo($"[ABPS] PMC wave queued: {(isUsec ? "USEC" : "BEAR")} x{totalBots} on {mapName} ({Utility.PmcsSpawnedThisRaid}/{maxPmcs})");
+        }
+
+        private static int GetMaxPmcsForMap(string mapName)
+        {
+            return mapName switch
+            {
+                "bigmap" => Plugin.CustomsMaxPmcs,
+                "factory4_day" or "factory4_night" => Plugin.FactoryMaxPmcs,
+                "interchange" => Plugin.InterchangeMaxPmcs,
+                "laboratory" => Plugin.LabsMaxPmcs,
+                "lighthouse" => Plugin.LighthouseMaxPmcs,
+                "rezervbase" => Plugin.ReserveMaxPmcs,
+                "sandbox" => Plugin.GroundZeroMaxPmcs,
+                "sandbox_high" => Plugin.GroundZeroHighMaxPmcs,
+                "shoreline" => Plugin.ShorelineMaxPmcs,
+                "tarkovstreets" => Plugin.StreetsMaxPmcs,
+                "woods" => Plugin.WoodsMaxPmcs,
+                "labyrinth" => Plugin.LabyrinthMaxPmcs,
+                _ => 0,
+            };
         }
         
         private static string GetValidBotZone(WildSpawnType botType, int count, BotZone[] allZones, string location, BotsController _botsController)
