@@ -73,7 +73,7 @@
     "waves": {
       "enable": false,
       "allowPmcsOnLabyrinth": false,
-      "ignoreMaxBotCaps": false,
+      "ignoreMaxBotCaps": true,
       "groupChance": 20,
       "maxGroupSize": 2,
       "maxGroupCount": 3,

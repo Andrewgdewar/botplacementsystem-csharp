@@ -44,7 +44,7 @@ namespace acidphantasm_botplacementsystem.Patches
                 if (maxPmcs > 0 && Utility.PmcsSpawnedThisRaid + escortPointCount > maxPmcs)
                 {
                     Logger.LogInfo($"[ABPS] PMC cap reached for {location}: {Utility.PmcsSpawnedThisRaid}/{maxPmcs}, rejecting wave of {escortPointCount}");
-                    __result = false;
+                    __result = true;
                     return false;
                 }
 
@@ -198,17 +198,20 @@ namespace acidphantasm_botplacementsystem.Patches
             var validSpawnPoints = new List<ISpawnPoint>();
             if (list.Count == 0) return validSpawnPoints;
 
-            // Wave budget = total cap minus starting reserve. Index = (already spawned / budget) * list size.
+            // Index spaces successive PMC spawns across the sorted list:
+            // alreadySpawned / maxPmcs -> fractional position, multiplied by list size.
+            // If maxPmcs is unknown (0), fall back to starting at index 0 (acid's behaviour).
             var mapName = (Utility.CurrentLocation ?? "default").ToLower();
             var maxPmcs = GetMaxPmcsForMap(mapName);
-            var startingReserve = 2; // matches server startingPMCs map limit max (1-2 default)
-            var waveBudget = System.Math.Max(1, maxPmcs - startingReserve);
-            var alreadySpawned = System.Math.Max(0, Utility.PmcsSpawnedThisRaid - startingReserve);
-            var targetFraction = System.Math.Min(0.999f, (float)alreadySpawned / waveBudget);
-            var startIndex = System.Math.Min(list.Count - 1, (int)System.Math.Floor(list.Count * targetFraction));
+            var startIndex = 0;
+            if (maxPmcs > 0)
+            {
+                var targetFraction = System.Math.Min(0.999f, (float)Utility.PmcsSpawnedThisRaid / maxPmcs);
+                startIndex = System.Math.Min(list.Count - 1, (int)System.Math.Floor(list.Count * targetFraction));
 
-            if (Plugin.DebugLogging)
-                Plugin.LogSource.LogInfo($"[ABPS] PMC index pick: spawned={alreadySpawned}/{waveBudget} fraction={targetFraction:0.00} startIdx={startIndex}/{list.Count}");
+                if (Plugin.DebugLogging)
+                    Plugin.LogSource.LogInfo($"[ABPS] PMC index pick: spawned={Utility.PmcsSpawnedThisRaid}/{maxPmcs} fraction={targetFraction:0.00} startIdx={startIndex}/{list.Count}");
+            }
 
             // Forward search from startIndex for the first valid point.
             ISpawnPoint firstPoint = null;
