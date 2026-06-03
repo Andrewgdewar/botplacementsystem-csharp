@@ -68,7 +68,7 @@ namespace acidphantasm_botplacementsystem.Spawning
             var payload = await RequestHandler.GetJsonAsync("/botplacementsystem/announcePreset");
             if (string.IsNullOrEmpty(payload))
             {
-                return null;
+                return string.Empty;
             }
 
             // The server returns the display name serialized as a JSON string ("More Scavs").
