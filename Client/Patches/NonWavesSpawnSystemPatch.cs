@@ -57,7 +57,7 @@ namespace acidphantasm_botplacementsystem.Patches
 
             // PMC tick runs independently of the scav active/inactive cycle so PMC pacing
             // isn't affected by scav quiet windows. Has its own attempt interval + gates.
-            TryToSpawnPmc(___botsController_0, ___abstractGame_0, ___location_0, ___gclass1881_0);
+            TryToSpawnPmc(___botsController_0, ___abstractGame_0, ___location_0);
 
             if (nextWindowToggleTime.Equals(null) || nextWindowToggleTime <= ___abstractGame_0.PastTime)
             {
@@ -241,7 +241,7 @@ namespace acidphantasm_botplacementsystem.Patches
             UnityEngine.Object.Destroy(botToDespawn);
         }
 
-        private static void TryToSpawnPmc(BotsController botsController, AbstractGame abstractGame, LocationSettingsClass.Location location, GClass1881<BotDifficulty> difficultyWeights)
+        private static void TryToSpawnPmc(BotsController botsController, AbstractGame abstractGame, LocationSettingsClass.Location location)
         {
             // Per-map cap (config). If unknown map, bail.
             var mapName = (Utility.CurrentLocation ?? "default").ToLower();
@@ -311,23 +311,42 @@ namespace acidphantasm_botplacementsystem.Patches
                 Utility.CurrentMapZones = botsController.BotSpawner.AllBotZones.ToList();
             var botZone = GetValidBotZone(spawnType, totalBots, botsController.BotSpawner.AllBotZones, mapName, botsController);
 
-            botsController.ActivateBotsByWave(new BotWaveDataClass
+            try
             {
-                BotsCount = totalBots,
-                Time = Time.time,
-                Difficulty = difficultyWeights.Random(),
-                IsPlayers = false,
-                Side = side,
-                WildSpawnType = spawnType,
-                SpawnAreaName = botZone,
-                WithCheckMinMax = false,
-                ChanceGroup = 0,
-            });
+                botsController.ActivateBotsByWave(new BotWaveDataClass
+                {
+                    BotsCount = totalBots,
+                    Time = Time.time,
+                    Difficulty = RollPmcDifficulty(),
+                    IsPlayers = false,
+                    Side = side,
+                    WildSpawnType = spawnType,
+                    SpawnAreaName = botZone,
+                    WithCheckMinMax = false,
+                    ChanceGroup = 0,
+                });
 
-            Utility.PmcsSpawnedThisRaid += totalBots;
+                Utility.PmcsSpawnedThisRaid += totalBots;
 
-            if (Plugin.DebugLogging)
-                Plugin.LogSource.LogInfo($"[ABPS] PMC wave queued: {(isUsec ? "USEC" : "BEAR")} x{totalBots} on {mapName} ({Utility.PmcsSpawnedThisRaid}/{maxPmcs})");
+                if (Plugin.DebugLogging)
+                    Plugin.LogSource.LogInfo($"[ABPS] PMC wave queued: {(isUsec ? "USEC" : "BEAR")} x{totalBots} on {mapName} ({Utility.PmcsSpawnedThisRaid}/{maxPmcs})");
+            }
+            catch (Exception ex)
+            {
+                Plugin.LogSource.LogError($"[ABPS] PMC ActivateBotsByWave failed: {ex.GetType().Name}: {ex.Message}");
+            }
+        }
+
+        // Weighted PMC difficulty roll matching the original server config
+        // pmcDifficulty: easy=10, normal=50, hard=30, impossible=10. Used for wave
+        // PMCs because the scav BotDifficulty randomizer doesn't reflect PMC tuning.
+        private static BotDifficulty RollPmcDifficulty()
+        {
+            var roll = UnityEngine.Random.Range(0, 100);
+            if (roll < 10) return BotDifficulty.easy;
+            if (roll < 60) return BotDifficulty.normal;
+            if (roll < 90) return BotDifficulty.hard;
+            return BotDifficulty.impossible;
         }
 
         private static int GetMaxPmcsForMap(string mapName)
