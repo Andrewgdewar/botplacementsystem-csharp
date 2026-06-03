@@ -19,6 +19,19 @@ public record AbpsConfig
 
     [JsonPropertyName("configAppSettings")]
     public required ConfigAppSettings ConfigAppSettings { get; set; }
+
+    // Optional so older config.json files without a preset section still deserialize.
+    [JsonPropertyName("presetConfig")] public PresetConfig? PresetConfig { get; set; }
+}
+
+public record PresetConfig
+{
+    // When false, ABPS runs purely on the values in config.json (no preset overlay).
+    [JsonPropertyName("enable")] public bool Enable { get; set; }
+
+    // "random" rolls a weighted preset each rebuild; otherwise a specific preset key
+    // from Presets.json (e.g. "insanity"). "live-like" applies no overrides.
+    [JsonPropertyName("forcedPreset")] public string ForcedPreset { get; set; } = "random";
 }
 
 public record PmcTypeChance

@@ -1,0 +1,143 @@
+{
+  "live-like": {},
+  "more-scavs": {
+    "scavConfig": {
+      "startingScavs": {
+        "startingMarksman": true
+      },
+      "waves": {
+        "activeTimeMin": 240,
+        "activeTimeMax": 300,
+        "quietTimeMin": 60,
+        "quietTimeMax": 90,
+        "nonWaveSpawnBotsLimitPerPlayer": 28
+      }
+    }
+  },
+  "more-pmcs": {
+    "pmcConfig": {
+      "startingPMCs": {
+        "groupChance": 40,
+        "maxGroupSize": 4
+      },
+      "waves": {
+        "enable": true
+      }
+    }
+  },
+  "more-scavs-and-pmcs": {
+    "scavConfig": {
+      "waves": {
+        "activeTimeMin": 240,
+        "activeTimeMax": 300,
+        "quietTimeMin": 60,
+        "quietTimeMax": 90,
+        "nonWaveSpawnBotsLimitPerPlayer": 26
+      }
+    },
+    "pmcConfig": {
+      "startingPMCs": {
+        "groupChance": 35,
+        "maxGroupSize": 4
+      },
+      "waves": {
+        "enable": true
+      }
+    }
+  },
+  "quiet-raids": {
+    "scavConfig": {
+      "waves": {
+        "activeTimeMin": 120,
+        "activeTimeMax": 150,
+        "quietTimeMin": 240,
+        "quietTimeMax": 300,
+        "nonWaveSpawnBotsLimitPerPlayer": 10
+      }
+    },
+    "pmcConfig": {
+      "startingPMCs": {
+        "groupChance": 10,
+        "maxGroupSize": 2
+      }
+    }
+  },
+  "pmc-warfare": {
+    "scavConfig": {
+      "waves": {
+        "nonWaveSpawnBotsLimitPerPlayer": 12
+      }
+    },
+    "pmcConfig": {
+      "startingPMCs": {
+        "groupChance": 50,
+        "maxGroupSize": 4,
+        "maxGroupCount": 5
+      },
+      "waves": {
+        "enable": true
+      }
+    }
+  },
+  "boss-invasion": {
+    "bossConfig": {
+      "bossKnight": { "spawnChance": { "bigmap": 60, "lighthouse": 60, "shoreline": 60, "woods": 60 } },
+      "bossBully": { "spawnChance": { "bigmap": 60 } },
+      "bossKilla": { "spawnChance": { "interchange": 60 } },
+      "bossGluhar": { "spawnChance": { "rezervbase": 60 } },
+      "bossSanitar": { "spawnChance": { "shoreline": 60 } },
+      "bossKolontay": { "spawnChance": { "sandbox_high": 60, "tarkovstreets": 60 } },
+      "bossBoar": { "spawnChance": { "tarkovstreets": 60 } },
+      "bossKojaniy": { "spawnChance": { "woods": 60 } }
+    }
+  },
+  "main-boss-guaranteed": {
+    "bossConfig": {
+      "bossKnight": { "spawnChance": { "bigmap": 100, "lighthouse": 100, "shoreline": 100, "woods": 100 } },
+      "bossBully": { "spawnChance": { "bigmap": 100 } },
+      "bossKilla": { "spawnChance": { "interchange": 100 } },
+      "bossGluhar": { "spawnChance": { "rezervbase": 100 } },
+      "bossSanitar": { "spawnChance": { "shoreline": 100 } },
+      "bossKolontay": { "spawnChance": { "sandbox_high": 100, "tarkovstreets": 100 } },
+      "bossBoar": { "spawnChance": { "tarkovstreets": 100 } },
+      "bossKojaniy": { "spawnChance": { "woods": 100 } }
+    }
+  },
+  "insanity": {
+    "weeklyBoss": {
+      "enable": true
+    },
+    "scavConfig": {
+      "startingScavs": {
+        "startingMarksman": true
+      },
+      "waves": {
+        "activeTimeMin": 300,
+        "activeTimeMax": 360,
+        "quietTimeMin": 30,
+        "quietTimeMax": 60,
+        "nonWaveSpawnBotsLimitPerPlayer": 32
+      }
+    },
+    "pmcConfig": {
+      "startingPMCs": {
+        "groupChance": 60,
+        "maxGroupSize": 4,
+        "maxGroupCount": 5
+      },
+      "waves": {
+        "enable": true
+      }
+    },
+    "bossConfig": {
+      "bossKnight": { "spawnChance": { "bigmap": 100, "lighthouse": 100, "shoreline": 100, "woods": 100 } },
+      "bossBully": { "spawnChance": { "bigmap": 100 } },
+      "bossKilla": { "spawnChance": { "interchange": 100 } },
+      "bossGluhar": { "spawnChance": { "rezervbase": 100 } },
+      "bossSanitar": { "spawnChance": { "shoreline": 100 } },
+      "bossKolontay": { "spawnChance": { "sandbox_high": 100, "tarkovstreets": 100 } },
+      "bossBoar": { "spawnChance": { "tarkovstreets": 100 } },
+      "bossKojaniy": { "spawnChance": { "woods": 100 } }
+    }
+  }
+}

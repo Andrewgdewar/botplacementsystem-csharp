@@ -45,6 +45,12 @@
     <Content Update="Defaults\Scavs.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
+    <Content Update="Presets\Presets.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Update="Presets\PresetWeightings.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
     <Content Update="wwwroot\images\background.jpg">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>

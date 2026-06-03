@@ -12,6 +12,8 @@ namespace acidphantasm_botplacementsystem
     {
         public static ManualLogSource LogSource;
 
+        public static bool ShowPresetOnRaidStart;
+
         public static bool DespawnFurthest;
         public static bool DespawnPmcs;
         public static float DespawnDistance;
@@ -133,6 +135,7 @@ namespace acidphantasm_botplacementsystem
             new TryToSpawnInZonePatch().Enable();
             new IsPlayerEnemyPatch().Enable();
             new BotsControllerInitPatch().Enable();
+            new PresetAnnouncePatch().Enable();
             
             AbpsConfig.InitAbpsConfig(Config);
         }

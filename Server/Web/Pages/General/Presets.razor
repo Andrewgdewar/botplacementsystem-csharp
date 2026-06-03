@@ -1,0 +1,126 @@
+﻿@page "/botplacementsystem/presets"
+@layout MainLayout
+
+@inject _botplacementsystem.Globals.PresetManager PresetManager
+
+<style>
+    .mud-divider {
+        border-width: 2.5px;
+    }
+</style>
+
+<MudMainContent>
+    <MudContainer Class="mb-20">
+        <MudExpansionPanels MultiExpansion="true">
+
+            <MudExpansionPanel Class="mud-expansion-panels-borders ma-3 pa-5" Text="Preset System" Expanded="true">
+
+                <MudAlert Severity="Severity.Info" Class="mb-4">
+                    Presets are MOAR-style raid modifiers. When enabled, the selected preset is layered on
+                    top of your saved config every time the spawns are rebuilt (server start, raid end, and
+                    on save). Choosing <b>Random</b> rolls a new weighted preset each raid. The active preset
+                    is announced in-game on raid start (if enabled in the client F12 settings).
+                </MudAlert>
+
+                <MudGrid>
+                    <MudItem xs="1" />
+                    <MudItem xs="4">
+                        <MudPaper Class="d-flex align-center mud-width-full ma-1" Elevation="0">
+                            <MudTooltip Text="When off, ABPS uses your saved config values exactly and no preset is applied." Color="Color.Primary" Placement="Placement.Right" Arrow="true">
+                                <MudText>Enable Presets</MudText>
+                            </MudTooltip>
+                        </MudPaper>
+                    </MudItem>
+                    <MudItem xs="6">
+                        <MudPaper Class="d-flex align-center mud-width-full" Elevation="0">
+                            <MudSwitch T="bool" @bind-Value="_preset_Enabled" Color="Color.Success" UncheckedColor="Color.Default" LabelPlacement="Placement.End">@_preset_Enabled</MudSwitch>
+                        </MudPaper>
+                    </MudItem>
+                    <MudItem xs="1">
+                        @if (MainLayout._appUndoButtonToggle && MainLayout.pendingChanges.Contains("_preset_Enabled"))
+                        {
+                            <MudButton @onclick="undo_Preset_Enabled" Variant="Variant.Filled" Color="Color.Inherit" Size="Size.Small">Undo</MudButton>
+                        }
+                        else if (MainLayout._appDefaultButtonToggle && _preset_Enabled != false)
+                        {
+                            <MudButton @onclick="default_Preset_Enabled" Variant="Variant.Filled" Color="Color.Dark" Size="Size.Small">Default</MudButton>
+                        }
+                    </MudItem>
+
+                    <MudItem xs="1" />
+                    <MudItem xs="4">
+                        <MudPaper Class="d-flex align-center mud-width-full ma-1" Elevation="0">
+                            <MudTooltip Text="Random rolls a weighted preset each raid. Any other choice forces that preset every raid." Color="Color.Primary" Placement="Placement.Right" Arrow="true">
+                                <MudText>Active Preset</MudText>
+                            </MudTooltip>
+                        </MudPaper>
+                    </MudItem>
+                    <MudItem xs="6">
+                        <MudPaper Class="d-flex align-center mud-width-full" Elevation="0">
+                            <MudSelect T="string" @bind-Value="_preset_Forced" Disabled="!_preset_Enabled" Variant="Variant.Outlined" Dense="true" Class="mud-width-full">
+                                <MudSelectItem T="string" Value="@PresetManager.RandomLabel">Random (weighted)</MudSelectItem>
+                                @foreach (var option in _presetOptions)
+                                {
+                                    <MudSelectItem T="string" Value="@option.Label">@option.Name</MudSelectItem>
+                                }
+                            </MudSelect>
+                        </MudPaper>
+                    </MudItem>
+                    <MudItem xs="1">
+                        @if (MainLayout._appUndoButtonToggle && MainLayout.pendingChanges.Contains("_preset_Forced"))
+                        {
+                            <MudButton @onclick="undo_Preset_Forced" Variant="Variant.Filled" Color="Color.Inherit" Size="Size.Small">Undo</MudButton>
+                        }
+                        else if (MainLayout._appDefaultButtonToggle && _preset_Forced != PresetManager.RandomLabel)
+                        {
+                            <MudButton @onclick="default_Preset_Forced" Variant="Variant.Filled" Color="Color.Dark" Size="Size.Small">Default</MudButton>
+                        }
+                    </MudItem>
+                </MudGrid>
+            </MudExpansionPanel>
+
+            <MudExpansionPanel Class="mud-expansion-panels-borders ma-3 pa-5" Text="Available Presets" Expanded="true">
+                <MudList T="string" Dense="true">
+                    @foreach (var option in _presetOptions)
+                    {
+                        <MudListItem T="string" Icon="@Icons.Material.Outlined.Tune">@option.Name</MudListItem>
+                    }
+                </MudList>
+            </MudExpansionPanel>
+
+        </MudExpansionPanels>
+    </MudContainer>
+</MudMainContent>
+
+@code {
+    private IReadOnlyList<_botplacementsystem.Globals.PresetOption> _presetOptions = new List<_botplacementsystem.Globals.PresetOption>();
+
+    protected override void OnInitialized()
+    {
+        _presetOptions = PresetManager.GetPresetOptions();
+    }
+
+    private bool _preset_Enabled
+    {
+        get => ModConfig.Config.PresetConfig!.Enable;
+        set
+        {
+            Utils.UpdateView(value, ModConfig.OriginalConfig.PresetConfig!.Enable);
+            ModConfig.Config.PresetConfig!.Enable = value;
+        }
+    }
+    private void undo_Preset_Enabled() => _preset_Enabled = ModConfig.OriginalConfig.PresetConfig!.Enable;
+    private void default_Preset_Enabled() => _preset_Enabled = false;
+
+    private string _preset_Forced
+    {
+        get => ModConfig.Config.PresetConfig!.ForcedPreset;
+        set
+        {
+            Utils.UpdateView(value, ModConfig.OriginalConfig.PresetConfig!.ForcedPreset);
+            ModConfig.Config.PresetConfig!.ForcedPreset = value;
+        }
+    }
+    private void undo_Preset_Forced() => _preset_Forced = ModConfig.OriginalConfig.PresetConfig!.ForcedPreset;
+    private void default_Preset_Forced() => _preset_Forced = PresetManager.RandomLabel;
+}

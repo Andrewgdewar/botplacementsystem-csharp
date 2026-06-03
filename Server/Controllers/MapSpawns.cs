@@ -16,6 +16,7 @@ public class MapSpawns(
     PmcSpawns pmcSpawns,
     VanillaAdjustments vanillaAdjustments,
     ICloner cloner,
+    PresetManager presetManager,
     DatabaseService databaseService)
 {
     private List<string> _validMaps =
@@ -43,7 +44,17 @@ public class MapSpawns(
 
     public void ConfigureInitialData()
     {
-        _locationData = databaseService.GetLocations().GetDictionary();
+        // Roll/apply the active preset (if enabled) as a transient overlay so the
+        // spawn caches are built from the merged config, then restore the authored
+        // config so the web UI and saves keep operating on config.json values.
+        var baseConfig = ModConfig.Config;
+        var effectiveConfig = presetManager.GetEffectiveConfig(baseConfig);
+        var swapped = !ReferenceEquals(effectiveConfig, baseConfig);
+        if (swapped) ModConfig.Config = effectiveConfig;
+
+        try
+        {
+            _locationData = databaseService.GetLocations().GetDictionary();
 
         foreach (var map in _validMaps)
         {
@@ -76,6 +87,11 @@ public class MapSpawns(
         vanillaAdjustments.DisableVanillaSettings();
         vanillaAdjustments.RemoveCustomPMCWaves();
         BuildInitialCache();
+        }
+        finally
+        {
+            if (swapped) ModConfig.Config = baseConfig;
+        }
     }
 
     private void BuildInitialCache()

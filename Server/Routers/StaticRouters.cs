@@ -18,6 +18,7 @@ public class StaticRouters : StaticRouter
     private static string? _modPath;
     private static string? _savesPath;
     private static MapSpawns _mapSpawns;
+    private static PresetManager _presetManager;
     private static ISptLogger<StaticRouters> _logger;
 
     public static bool CacheRebuilt = false;
@@ -28,6 +29,7 @@ public class StaticRouters : StaticRouter
         HttpResponseUtil httpResponseUtil,
         ModHelper modHelper,
         MapSpawns mapSpawns,
+        PresetManager presetManager,
         ISptLogger<StaticRouters> logger
     ) : base(
         jsonUtil,
@@ -39,6 +41,7 @@ public class StaticRouters : StaticRouter
         _modPath = modHelper.GetAbsolutePathToModFolder(Assembly.GetExecutingAssembly());;
         _savesPath = Path.Join(_modPath, "Data");
         _mapSpawns = mapSpawns;
+        _presetManager = presetManager;
         _logger = logger;
         Load();
     }
@@ -98,6 +101,14 @@ public class StaticRouters : StaticRouter
                     sessionID,
                     output
                 ) => await new ValueTask<string>(_jsonUtil.Serialize(BossTrackingData))
+            ),
+            new RouteAction("/botplacementsystem/announcePreset",
+                async (
+                    url,
+                    info,
+                    sessionID,
+                    output
+                ) => await new ValueTask<string>(_jsonUtil.Serialize(_presetManager.CurrentPresetName))
             )
         ];
     }
