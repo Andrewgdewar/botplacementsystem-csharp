@@ -779,7 +779,7 @@ namespace acidphantasm_botplacementsystem
             _pmcSpawnNoise = config.Bind(
                 GeneralConfig,
                 "PMC Spawn Noise",
-                400f,
+                200f,
                 new ConfigDescription("Random distance noise (meters) added to PMC spawn scoring. Higher = PMCs spread across the map, less likely to spawn near you.",
                     new AcceptableValueRange<float>(0f, 1000f),
                     new ConfigurationManagerAttributes { Order = _loadOrder-- }));
@@ -799,7 +799,7 @@ namespace acidphantasm_botplacementsystem
             _perPlayerScavMultiplier = config.Bind(
                 GeneralConfig,
                 "Per-Player Scav Multiplier",
-                0.2f,
+                0.3f,
                 new ConfigDescription("How much each extra player past the first scales the scav spawn budget.\n0.0 = same budget for any player count.\n0.2 = 5 players get 1.8x the solo budget (recommended).\n1.0 = vanilla acid behaviour: 5 players get 5x the solo budget.",
                     new AcceptableValueRange<float>(0f, 1f),
                     new ConfigurationManagerAttributes { Order = _loadOrder-- }));
@@ -819,7 +819,7 @@ namespace acidphantasm_botplacementsystem
             _scavScheduleStartPercent = config.Bind(
                 GeneralConfig,
                 "Scav Schedule Start Budget Pct",
-                0.15f,
+                0.2f,
                 new ConfigDescription("Fraction of the per-player scav budget unlocked at raid start. Ensures the map fills with some scavs immediately.",
                     new AcceptableValueRange<float>(0f, 1f),
                     new ConfigurationManagerAttributes { Order = _loadOrder-- }));
