@@ -2,6 +2,11 @@ name: Submit PR #1 Review
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - copilot/andrewgdewarbotplacementsystem-csharp
+    paths:
+      - '.github/workflows/submit-pr1-review.yml'
 
 permissions:
   pull-requests: write
