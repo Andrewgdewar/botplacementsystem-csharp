@@ -370,10 +370,6 @@ public record WaveConfig
     [JsonPropertyName("secondsBetweenWaves")] public int SecondsBetweenWaves { get; set; }
 
     [JsonPropertyName("stopWavesBeforeEndOfRaidLimit")] public int StopWavesBeforeEndOfRaidLimit { get; set; }
-
-    [JsonPropertyName("maxTotalPmcs")] public required ValidLocationInt MaxTotalPmcs { get; set; }
-    [JsonPropertyName("taperStartPercent")] public double TaperStartPercent { get; set; }
-    [JsonPropertyName("taperEndPercent")] public double TaperEndPercent { get; set; }
 }
 
 public record PMCStartingConfig

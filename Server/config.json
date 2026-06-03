@@ -80,24 +80,7 @@
       "maxBotsPerWave": 4,
       "delayBeforeFirstWave": 500,
       "secondsBetweenWaves": 360,
-      "stopWavesBeforeEndOfRaidLimit": 300,
-      "maxTotalPmcs": {
-        "bigmap": 12,
-        "factory4_day": 5,
-        "factory4_night": 5,
-        "interchange": 12,
-        "laboratory": 10,
-        "lighthouse": 12,
-        "rezervbase": 12,
-        "sandbox": 7,
-        "sandbox_high": 9,
-        "shoreline": 12,
-        "tarkovstreets": 12,
-        "woods": 10,
-        "labyrinth": 8
-      },
-      "taperStartPercent": 0.5,
-      "taperEndPercent": 0.7
+      "stopWavesBeforeEndOfRaidLimit": 300
     }
   },
   "scavConfig": {
