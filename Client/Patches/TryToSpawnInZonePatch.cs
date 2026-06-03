@@ -93,8 +93,13 @@ namespace acidphantasm_botplacementsystem.Patches
             // Loosely shuffle the ahead portion for variety
             Utility.LooselyShuffle(sorted, Plugin.ShufflePercent, Plugin.ShuffleStep);
 
-            foreach (var point in sorted)
+            // Skip the closest N% of points so scavs don't spawn right on top of the player.
+            var skipCount = (int)System.Math.Floor(sorted.Count * Plugin.ScavSkipClosestPercent);
+            var startIndex = skipCount > 0 && skipCount < sorted.Count ? skipCount : 0;
+
+            for (var i = startIndex; i < sorted.Count; i++)
             {
+                var point = sorted[i];
                 if (!IsValid(point, pmcList, pmcDistance) || !IsValid(point, scavList, scavDistance))
                     continue;
 

@@ -87,6 +87,7 @@ namespace acidphantasm_botplacementsystem
         private static ConfigEntry<float> _scavSpawnNoise;
         private static ConfigEntry<float> _pmcSpawnNoise;
         private static ConfigEntry<float> _pmcSkipClosestPercent;
+        private static ConfigEntry<float> _scavSkipClosestPercent;
         private static ConfigEntry<float> _perPlayerScavMultiplier;
 
         private static ConfigEntry<int> BindMaxPmc(ConfigFile config, string label, int defaultValue, string description)
@@ -669,7 +670,7 @@ namespace acidphantasm_botplacementsystem
             _shufflePercent = config.Bind(
                 GeneralConfig,
                 "Shuffle Percent",
-                0.5f,
+                0.6f,
                 new ConfigDescription("What portion of the ahead-sorted spawn list gets loosely shuffled. 0.5 = top 50%, 1.0 = entire list.",
                     new AcceptableValueRange<float>(0f, 1f),
                     new ConfigurationManagerAttributes { Order = _loadOrder-- }));
@@ -679,7 +680,7 @@ namespace acidphantasm_botplacementsystem
             _shuffleStep = config.Bind(
                 GeneralConfig,
                 "Shuffle Step",
-                4,
+                2,
                 new ConfigDescription("Every Nth element in the shuffle zone gets swapped with a random element from outside it. Lower = more shuffling.",
                     new AcceptableValueRange<int>(2, 10),
                     new ConfigurationManagerAttributes { Order = _loadOrder-- }));
@@ -689,7 +690,7 @@ namespace acidphantasm_botplacementsystem
             _scavSpawnNoise = config.Bind(
                 GeneralConfig,
                 "Scav Spawn Noise",
-                50f,
+                100f,
                 new ConfigDescription("Random distance noise (meters) added to scav spawn scoring. Higher = scavs spread more, less predictable.",
                     new AcceptableValueRange<float>(0f, 500f),
                     new ConfigurationManagerAttributes { Order = _loadOrder-- }));
@@ -725,6 +726,16 @@ namespace acidphantasm_botplacementsystem
                     new ConfigurationManagerAttributes { Order = _loadOrder-- }));
             Plugin.PerPlayerScavMultiplier = _perPlayerScavMultiplier.Value;
             _perPlayerScavMultiplier.SettingChanged += ABPS_SettingChanged;
+
+            _scavSkipClosestPercent = config.Bind(
+                GeneralConfig,
+                "Scav Skip Closest Percent",
+                0.1f,
+                new ConfigDescription("Skip this fraction of the closest valid spawn points when picking a scav spawn. 0.1 = never use closest 10%.",
+                    new AcceptableValueRange<float>(0f, 0.5f),
+                    new ConfigurationManagerAttributes { Order = _loadOrder-- }));
+            Plugin.ScavSkipClosestPercent = _scavSkipClosestPercent.Value;
+            _scavSkipClosestPercent.SettingChanged += ABPS_SettingChanged;
         }
         private static void ABPS_SettingChanged(object sender, EventArgs e)
         {
@@ -799,6 +810,7 @@ namespace acidphantasm_botplacementsystem
             Plugin.ScavSpawnNoise = _scavSpawnNoise.Value;
             Plugin.PmcSpawnNoise = _pmcSpawnNoise.Value;
             Plugin.PmcSkipClosestPercent = _pmcSkipClosestPercent.Value;
+            Plugin.ScavSkipClosestPercent = _scavSkipClosestPercent.Value;
             Plugin.PerPlayerScavMultiplier = _perPlayerScavMultiplier.Value;
         }
     }
