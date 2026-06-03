@@ -54,13 +54,15 @@ namespace acidphantasm_botplacementsystem.Spawning
                         if (Plugin.DebugLogging)
                             Plugin.LogSource.LogInfo($"[ABPS] Captured initial player spawn position: {player.Position}");
                         
-                        // Pre-sort spawn point lists by distance (no direction yet at raid start)
+                        // Pre-sort PMC spawn point lists with fuzzy PMC noise — ONLY done once at raid
+                        // start, never re-sorted. This locks PMC spawn distribution to a fixed plausible
+                        // map distribution from the player's initial spawn (more Tarkov-like).
                         var spawnPos = player.Position;
                         Utility.PlayerSpawnPoints = Utility.PlayerSpawnPoints
-                            .OrderBy(sp => Utility.GetDirectionalScore(sp.Position, spawnPos, Plugin.ScavSpawnNoise))
+                            .OrderBy(sp => Utility.GetDirectionalScore(sp.Position, spawnPos, Plugin.PmcSpawnNoise))
                             .ToList();
                         Utility.BackupPlayerSpawnPoints = Utility.BackupPlayerSpawnPoints
-                            .OrderBy(sp => Utility.GetDirectionalScore(sp.Position, spawnPos, Plugin.ScavSpawnNoise))
+                            .OrderBy(sp => Utility.GetDirectionalScore(sp.Position, spawnPos, Plugin.PmcSpawnNoise))
                             .ToList();
                         Utility.CombinedSpawnPoints = Utility.PlayerSpawnPoints
                             .Concat(Utility.BackupPlayerSpawnPoints)

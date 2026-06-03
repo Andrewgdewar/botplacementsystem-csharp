@@ -265,16 +265,11 @@ namespace acidphantasm_botplacementsystem.Utils
                 }
             }
             
-            // Re-sort spawn point lists with directional scoring (using scav noise as default)
-            PlayerSpawnPoints = PlayerSpawnPoints
-                .OrderBy(sp => GetDirectionalScore(sp.Position, currentPos, Plugin.ScavSpawnNoise))
-                .ToList();
-            BackupPlayerSpawnPoints = BackupPlayerSpawnPoints
-                .OrderBy(sp => GetDirectionalScore(sp.Position, currentPos, Plugin.ScavSpawnNoise))
-                .ToList();
-            CombinedSpawnPoints = PlayerSpawnPoints
-                .Concat(BackupPlayerSpawnPoints)
-                .ToList();
+            // PMC spawn lists (PlayerSpawnPoints / BackupPlayerSpawnPoints / CombinedSpawnPoints)
+            // are locked at raid start in PMCSpawning.cs and NEVER re-sorted here — PMCs use a
+            // fixed plausible distribution from the player's spawn point.
+            // CurrentPlayerPosition / TravelDirection are still updated above for the scav system
+            // (TryToSpawnInZonePatch uses them for live directional scoring against AllBotSpawnPoints).
 
             if (Plugin.DebugLogging)
                 Plugin.LogSource.LogInfo($"[ABPS] Updated spawn reference position to {currentPos}");

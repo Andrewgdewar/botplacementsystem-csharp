@@ -632,8 +632,8 @@ namespace acidphantasm_botplacementsystem
             _pmcSkipClosestPercent = config.Bind(
                 GeneralConfig,
                 "PMC Skip Closest Percent",
-                0.1f,
-                new ConfigDescription("Skip this fraction of the closest valid spawn points when picking a PMC spawn. 0.1 = never use closest 10%.",
+                0.15f,
+                new ConfigDescription("Skip this fraction of the closest valid spawn points when picking a PMC spawn. 0.15 = never use closest 15%.",
                     new AcceptableValueRange<float>(0f, 0.5f),
                     new ConfigurationManagerAttributes { Order = _loadOrder-- }));
             Plugin.PmcSkipClosestPercent = _pmcSkipClosestPercent.Value;

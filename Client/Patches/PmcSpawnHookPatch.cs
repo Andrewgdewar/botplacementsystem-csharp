@@ -177,24 +177,13 @@ namespace acidphantasm_botplacementsystem.Patches
         {
             if (source == null || source.Count == 0) return new List<ISpawnPoint>();
 
-            List<ISpawnPoint> sorted;
-            if (Utility.CurrentPlayerPosition.HasValue)
-            {
-                var playerPos = Utility.CurrentPlayerPosition.Value;
-                sorted = source
-                    .OrderBy(sp => Utility.GetDirectionalScore(sp.Position, playerPos, Plugin.PmcSpawnNoise))
-                    .ToList();
-            }
-            else
-            {
-                sorted = new List<ISpawnPoint>(source);
-            }
+            // PMC lists are sorted ONCE at raid start (PMCSpawning.cs) with fuzzy PMC noise.
+            // Don't re-sort here — just skip the closest N% of the locked order so PMCs
+            // never spawn in the area immediately around the player's spawn point.
+            var skipCount = (int)System.Math.Floor(source.Count * Plugin.PmcSkipClosestPercent);
+            if (skipCount <= 0 || skipCount >= source.Count) return new List<ISpawnPoint>(source);
 
-            var skipCount = (int)System.Math.Floor(sorted.Count * Plugin.PmcSkipClosestPercent);
-            if (skipCount > 0 && skipCount < sorted.Count)
-                sorted.RemoveRange(0, skipCount);
-
-            return sorted;
+            return source.GetRange(skipCount, source.Count - skipCount);
         }
 
         private static List<ISpawnPoint> GetAnySpawnPoints(IReadOnlyCollection<Player> pmcPlayers, IReadOnlyCollection<Player> scavPlayers, float distance, float scavDistance, int neededPoints, bool backupToPlayer = false)
