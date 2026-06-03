@@ -88,6 +88,7 @@ namespace acidphantasm_botplacementsystem
         public static float ScavSpawnNoise;
         public static float PmcSpawnNoise;
         public static float PmcSkipClosestPercent;
+        public static float PerPlayerScavMultiplier;
 
         public static BotSpawner BotSpawnerInstance;
 

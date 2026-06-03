@@ -87,6 +87,7 @@ namespace acidphantasm_botplacementsystem
         private static ConfigEntry<float> _scavSpawnNoise;
         private static ConfigEntry<float> _pmcSpawnNoise;
         private static ConfigEntry<float> _pmcSkipClosestPercent;
+        private static ConfigEntry<float> _perPlayerScavMultiplier;
 
         private static ConfigEntry<int> BindMaxPmc(ConfigFile config, string label, int defaultValue, string description)
         {
@@ -714,6 +715,16 @@ namespace acidphantasm_botplacementsystem
                     new ConfigurationManagerAttributes { Order = _loadOrder-- }));
             Plugin.PmcSkipClosestPercent = _pmcSkipClosestPercent.Value;
             _pmcSkipClosestPercent.SettingChanged += ABPS_SettingChanged;
+
+            _perPlayerScavMultiplier = config.Bind(
+                GeneralConfig,
+                "Per-Player Scav Multiplier",
+                0.2f,
+                new ConfigDescription("How much each extra player past the first scales the scav spawn budget.\n0.0 = same budget for any player count.\n0.2 = 5 players get 1.8x the solo budget (recommended).\n1.0 = vanilla acid behaviour: 5 players get 5x the solo budget.",
+                    new AcceptableValueRange<float>(0f, 1f),
+                    new ConfigurationManagerAttributes { Order = _loadOrder-- }));
+            Plugin.PerPlayerScavMultiplier = _perPlayerScavMultiplier.Value;
+            _perPlayerScavMultiplier.SettingChanged += ABPS_SettingChanged;
         }
         private static void ABPS_SettingChanged(object sender, EventArgs e)
         {
@@ -788,6 +799,7 @@ namespace acidphantasm_botplacementsystem
             Plugin.ScavSpawnNoise = _scavSpawnNoise.Value;
             Plugin.PmcSpawnNoise = _pmcSpawnNoise.Value;
             Plugin.PmcSkipClosestPercent = _pmcSkipClosestPercent.Value;
+            Plugin.PerPlayerScavMultiplier = _perPlayerScavMultiplier.Value;
         }
     }
 }

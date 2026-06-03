@@ -116,7 +116,7 @@ namespace acidphantasm_botplacementsystem.Patches
                 WithCheckMinMax = false,
                 ChanceGroup = 0,
             });
-            Utility.BotsSpawnedPerPlayer += 1d / Math.Max(1, Utility.CachedConnectedPlayers.Count);
+            Utility.BotsSpawnedPerPlayer += 1d / Math.Max(1d, 1d + Plugin.PerPlayerScavMultiplier * Math.Max(0, Utility.CachedConnectedPlayers.Count - 1));
 
             if (!(Time.time >= _nextDespawnCheckTime) || !Plugin.DespawnFurthest)
             {
