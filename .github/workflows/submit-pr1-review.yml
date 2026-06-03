@@ -1,0 +1,257 @@
+name: Submit PR #1 Review
+
+on:
+  workflow_dispatch:
+
+permissions:
+  pull-requests: write
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Submit formal review on PR #1
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const review = await github.rest.pulls.createReview({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: 1,
+              commit_id: '6641abf234c55f07bef6ddab28774b6180b61631',
+              event: 'COMMENT',
+              body: `## Overall Assessment
+
+This is a well-thought-out refactor: per-map caps, directional bias, deterministic spread, MOAR-style scheduling, and a runtime safety net are all genuinely useful additions. The code is well-commented and the intent is clear throughout.
+
+**Things done well:**
+- \`BindMaxPmc\` / \`BindMaxScav\` helper extraction removes repetitive config boilerplate
+- One-time PMC list sort at raid start (locked distribution) — clean idea, well commented
+- Scav schedule with explicit Start/Mid/Full phase points — much more controllable than the old all-at-once approach
+- Runtime hard cap as a server safety net
+- Good inline comments explaining intent (especially in \`PickFromDeterministicIndex\` and \`TryUpdatePlayerPosition\`)
+
+---
+
+### 🔴 Top 3 Priority Items
+
+1. **Verify the \`ref BotZone\` Harmony signature** (\`TryToSpawnInZonePatch.cs\`) — if the original \`TryToSpawn\` does not declare \`botZone\` as \`ref\`, the patch will fail silently and the \`botZone = pointZone;\` assignment is dead code. This is the highest-risk item.
+
+2. **Cache the sorted scav spawn list** (\`TryToSpawnInZonePatch.FindBestGlobalSpawnPoint\`) — running an O(n log n) sort over all bot spawn points on every scav tick is the biggest performance concern, especially on Streets.
+
+3. **Unify per-map config + duplicated map switches into a single \`MapSettings\` lookup** — \`GetMaxPmcsForMap\`, \`GetMaxScavsForMap\`, and \`GetDistanceForMap\` are three near-identical switch blocks. Collapsing them eliminates the class of bugs where a new map is added to one switch and forgotten in the others.`,
+              comments: [
+                {
+                  path: 'Client/Patches/TryToSpawnInZonePatch.cs',
+                  line: 22,
+                  side: 'RIGHT',
+                  body: `🔴 **Harmony \`ref\` signature must match the original method exactly.**
+
+You changed \`BotZone botZone\` to \`ref BotZone botZone\`. Harmony patches require the \`ref\`-ness of every parameter to match the target method's signature. If \`BotSpawner.TryToSpawn\` does **not** declare \`botZone\` as \`ref\`, the patch will fail to apply silently (Harmony logs a warning but doesn't throw), and the \`botZone = pointZone;\` assignment below becomes a dead local write — the caller's value is never updated.
+
+Please verify this against the SPT \`BotSpawner.TryToSpawn\` method signature. If the original isn't \`ref\`, remove \`ref\` here and reassign the zone via a different mechanism (e.g. \`__instance\`'s active zone property).`
+                },
+                {
+                  path: 'Server/Controllers/PmcSpawns.cs',
+                  line: 59,
+                  side: 'RIGHT',
+                  body: `🔴 **\`KeyNotFoundException\` for unrecognised map names.**
+
+\`\`\`csharp
+var startingPmcMax = ModConfig.Config.PmcConfig.StartingPMCs.MapLimits[location].Max;
+\`\`\`
+
+If \`location\` is not in \`MapLimits\` (custom map, typo, new official map), this throws \`KeyNotFoundException\` and aborts the entire schedule generation. The \`MaxTotalPmcs\` lookup just above uses \`TryGetValue\` — apply the same pattern here:
+
+\`\`\`csharp
+if (!ModConfig.Config.PmcConfig.StartingPMCs.MapLimits.TryGetValue(location, out var startingRange))
+    return pmcWaveSpawnInfo; // or use a sensible default
+var startingPmcMax = startingRange.Max;
+\`\`\``
+                },
+                {
+                  path: 'Server/Controllers/PmcSpawns.cs',
+                  line: 92,
+                  side: 'RIGHT',
+                  body: `🔴 **Jitter can produce a negative spawn time.**
+
+\`\`\`csharp
+bossDefaultData[0].Time = currentTime + randomUtil.GetInt(-jitter, jitter);
+\`\`\`
+
+\`currentTime\` starts at \`firstWaveTimer\` (currently 500 s), so in practice the subtraction is safe — but if a user ever reduces \`firstWaveTimer\` below 15, or if a future code path reuses this with a lower starting time, the result becomes negative and the server scheduler may behave unexpectedly.
+
+Suggest clamping:
+\`\`\`csharp
+bossDefaultData[0].Time = Math.Max(0, currentTime + randomUtil.GetInt(-jitter, jitter));
+\`\`\``
+                },
+                {
+                  path: 'Client/Patches/NonWavesSpawnSystemPatch.cs',
+                  line: 122,
+                  side: 'RIGHT',
+                  body: `🔴 **Piecewise lerp is not guarded against misconfiguration.**
+
+\`AcceptableValueRange\` prevents values outside [0,1] but does not enforce \`startBudget ≤ midBudget\` or \`midTime < fullTime\`. If a user sets \`Mid Budget = 0.3\` and \`Start Budget = 0.5\`, \`allowedFrac\` will *decrease* from 0.5 toward 0.3 during the first phase — scavs that were allowed early get cut off, which is the opposite of the intended schedule.
+
+Suggest clamping at the use site:
+\`\`\`csharp
+var midBudgetSafe = Math.Max(startBudget, midBudget); // never go below start
+var fullTimeSafe  = Math.Max(midTime + 0.001, fullTime); // avoid zero-length final segment
+\`\`\`
+Then use \`midBudgetSafe\` / \`fullTimeSafe\` in the lerp calculations.`
+                },
+                {
+                  path: 'Client/Utils/Utility.cs',
+                  line: 231,
+                  side: 'RIGHT',
+                  body: `🔴 **Random player pick each tick can cause \`TravelDirection\` oscillation.**
+
+\`\`\`csharp
+var player = alivePlayers[UnityEngine.Random.Range(0, alivePlayers.Count)];
+\`\`\`
+
+With two or more players moving in opposite directions, the selected reference player can flip on every 2-minute update, causing \`TravelDirection\` to swing 180°. Scavs will then spawn behind one cohort of players half the time.
+
+Consider pinning to a single reference player for the duration of the position history window — e.g. always pick \`alivePlayers[0]\` (the local human player), or stash the chosen player reference and only re-pick if they die or disconnect.`
+                },
+                {
+                  path: 'Server/config.json',
+                  line: 21,
+                  side: 'RIGHT',
+                  body: `⚠️ **All starting PMC ranges dropped to \`{min: 1, max: 2}\` — intentional?**
+
+Every map was previously 5–13 starting PMCs; now they're all capped at 1–2. Combined with \`maxTotalPmcs\` (e.g. 12 on Customs), the wave budget becomes \`12 − 2 = 10\` PMCs scheduled across waves starting at \`firstWaveTimer: 500 s\`. With \`taperEndPercent: 0.7\`, the active window closes at ~\`0.7 × raidDuration\`. On a 45-minute Customs raid this means waves stop scheduling around 31 minutes in, with most PMCs appearing only after the first ~8 minutes.
+
+Players will experience very quiet early raids. If this is intentional (encouraging a slower, more tactical early game), that's a valid design choice — but please call it out explicitly in the PR description so other contributors understand the intent.`
+                },
+                {
+                  path: 'Client/Patches/TryToSpawnInZonePatch.cs',
+                  line: 83,
+                  side: 'RIGHT',
+                  body: `🟡 **O(n log n) sort over all spawn points on every scav tick — consider caching.**
+
+\`allPoints.OrderBy(sp => Utility.GetDirectionalScore(...))\` scans and sorts the entire \`AllBotSpawnPoints\` list every time \`FindBestGlobalSpawnPoint\` is called. On Streets (200+ points) this can fire tens of times per minute.
+
+Since \`TravelDirection\` and \`CurrentPlayerPosition\` are updated only every 120 s, the sort order is stable between updates. Caching the sorted list (keyed on the current position/direction snapshot and invalidated when either changes) would eliminate repeated work:
+
+\`\`\`csharp
+// Re-sort only when position or direction changes
+if (_cachedSortKey != currentKey)
+{
+    _cachedSortedPoints = allPoints.OrderBy(...).ToList();
+    _cachedSortKey = currentKey;
+}
+var sorted = _cachedSortedPoints;
+\`\`\`
+
+Alternatively, since only the *first* valid point is needed, a partial scan (priority-queue of size ~50) avoids sorting the tail entirely.`
+                },
+                {
+                  path: 'Client/ABPSConfig.cs',
+                  line: 290,
+                  side: 'RIGHT',
+                  body: `🟡 **Consider a table-driven loop to cut ~150 lines of repetitive bindings.**
+
+The per-map binding block now repeats 24 times (12 PMC + 12 Scav), each with the same \`BindMaxPmc\` / \`BindMaxScav\` pattern. Adding a new map requires three identical edits (field declaration, binding, SettingChanged handler).
+
+A table-driven approach would collapse this to a single loop:
+\`\`\`csharp
+private static readonly (string Label, int PmcDefault, int ScavDefault)[] MapDefaults =
+{
+    ("Customs",      12, 20),
+    ("Factory",       5, 10),
+    ("Interchange",  12, 22),
+    // ...
+};
+// then iterate MapDefaults to bind, assign Plugin fields, and register handlers
+\`\`\`
+Adding a new map then becomes a single tuple entry.`
+                },
+                {
+                  path: 'Client/Patches/PmcSpawnHookPatch.cs',
+                  line: 327,
+                  side: 'RIGHT',
+                  body: `🟡 **Duplicate map-name switch — suggest collapsing into a shared \`MapSettings\` lookup.**
+
+\`GetMaxPmcsForMap\` (here), \`GetMaxScavsForMap\` (\`NonWavesSpawnSystemPatch.cs\`), and \`GetDistanceForMap\` (also in this file) are three near-identical switch blocks over the same set of map names. Any new map or rename must be updated in all three places.
+
+Suggest a shared \`Utility.GetMapSettings(string mapName)\` returning a lightweight struct/record:
+\`\`\`csharp
+public record MapSettings(int MaxPmcs, int MaxScavs, float SpawnDistance);
+\`\`\`
+All three current methods become one-liners against the returned record. Mismatches between the three switches become impossible.`
+                },
+                {
+                  path: 'Client/Patches/PmcSpawnHookPatch.cs',
+                  line: 46,
+                  side: 'RIGHT',
+                  body: `🟢 **Unconditional \`LogInfo\` will flood raid logs.**
+
+This \`LogInfo\` fires every time a PMC wave is rejected after the cap is reached, which can happen frequently in the second half of a raid. Consider wrapping in \`if (Plugin.DebugLogging)\` (as you do on line 108 and 213) to keep production logs quiet:
+\`\`\`csharp
+if (Plugin.DebugLogging)
+    Logger.LogInfo($"[ABPS] PMC cap reached for {location}: ...");
+\`\`\`
+The same recommendation applies to the other unconditional \`LogInfo\` calls in this file (e.g. lines 34, 87, 100, 126, 143).`
+                },
+                {
+                  path: 'Client/Utils/Utility.cs',
+                  line: 32,
+                  side: 'RIGHT',
+                  body: `🟢 **\`UsedSpawnPointIds\` is declared and cleared but never read or written elsewhere.**
+
+\`\`\`csharp
+public static readonly HashSet<string> UsedSpawnPointIds = new(); // Track used spawn points
+\`\`\`
+
+A \`Clear()\` call exists in \`InitializeSpawnPoints\`, but no code ever adds to or reads from this set. Either wire it up — for example, have \`FindBestGlobalSpawnPoint\` skip points whose \`Id\` is in \`UsedSpawnPointIds\` and add each chosen point after selection — or remove it to avoid confusion about whether exclusion is actually active.`
+                },
+                {
+                  path: 'Client/Patches/TryToSpawnInZonePatch.cs',
+                  line: 72,
+                  side: 'RIGHT',
+                  body: `🟢 **Flat global search dropped all hotzone preference for scavs.**
+
+The old patch applied a tighter spawn distance (10 m vs 40 m) when the selected zone was a hotzone, giving hotzones denser, more aggressive scav coverage. The new flat search removed this entirely — hotzones are now treated identically to any other zone.
+
+If hotzone differentiation is still desired, the cleanest retrofit is a score multiplier in \`GetDirectionalScore\` (or applied after scoring): points inside the current map's hotzone receive a score multiplier of e.g. \`0.7\` so they sort ahead of equally-distant non-hotzone points, recreating the preference without reintroducing zone-gated logic.`
+                },
+                {
+                  path: 'Client/Patches/PmcSpawnHookPatch.cs',
+                  line: 249,
+                  side: 'RIGHT',
+                  body: `🟢 **Magic number — suggest naming the cluster radius.**
+
+\`\`\`csharp
+if (Vector3.Distance(checkPoint.Position, firstPoint.Position) <= 20f)
+\`\`\`
+
+The \`20f\` metre clustering radius is a tuneable gameplay parameter. Naming it as a constant makes the intent explicit and provides a single point of change:
+\`\`\`csharp
+private const float GroupClusterRadius = 20f;
+// ...
+if (Vector3.Distance(checkPoint.Position, firstPoint.Position) <= GroupClusterRadius)
+\`\`\``
+                },
+                {
+                  path: 'Server/Controllers/PmcSpawns.cs',
+                  line: 74,
+                  side: 'RIGHT',
+                  body: `🟢 **\`jitter\` is a good name but consider exposing it to config.**
+
+\`\`\`csharp
+const int jitter = 15;
+\`\`\`
+
+A ±15 s window is reasonable, but users who prefer tighter, more predictable wave timing (or want to increase variance for a more chaotic feel) currently can't adjust it without recompiling. Since you're already exposing \`firstWaveTimer\`, \`taperEndPercent\`, and group settings, \`waveTimeJitter\` would fit naturally alongside them in \`WaveConfig\`.`
+                }
+              ]
+            });
+
+            console.log('Review submitted successfully!');
+            console.log('Review ID:', review.data.id);
+            console.log('Review URL:', review.data.html_url);
+            core.setOutput('review_id', review.data.id);
+            core.setOutput('review_url', review.data.html_url);
