@@ -84,7 +84,12 @@ namespace acidphantasm_botplacementsystem.Patches
         private static ISpawnPoint FindBestPmcSpawnPoint(IReadOnlyCollection<Player> pmcList, float pmcDistance, IReadOnlyCollection<Player> scavList, float scavDistance)
         {
             var source = Utility.PlayerSpawnPoints;
-            if (source == null || source.Count == 0) return null;
+            if (source == null || source.Count == 0)
+            {
+                if (Plugin.DebugLogging)
+                    Plugin.LogSource.LogInfo($"[ABPS PMC pick] FAIL: PlayerSpawnPoints empty (source null? {source == null})");
+                return null;
+            }
 
             // Skip closest N% (PMC), don't re-sort (list is locked from raid start).
             var skipCount = (int)Math.Floor(source.Count * Plugin.PmcSkipClosestPercent);
@@ -101,24 +106,33 @@ namespace acidphantasm_botplacementsystem.Patches
                 startIndex = Math.Min(list.Count - 1, (int)Math.Floor(list.Count * targetFraction));
             }
 
+            var invalidCount = 0;
+            var usedCount = 0;
+
             // Forward search from startIndex.
             for (var i = startIndex; i < list.Count; i++)
             {
                 var p = list[i];
-                if (Utility.UsedSpawnPointIds.Contains(p.Id)) continue;
-                if (!IsValid(p, pmcList, pmcDistance) || !IsValid(p, scavList, scavDistance)) continue;
+                if (Utility.UsedSpawnPointIds.Contains(p.Id)) { usedCount++; continue; }
+                if (!IsValid(p, pmcList, pmcDistance) || !IsValid(p, scavList, scavDistance)) { invalidCount++; continue; }
                 Utility.UsedSpawnPointIds.Add(p.Id);
+                if (Plugin.DebugLogging)
+                    Plugin.LogSource.LogInfo($"[ABPS PMC pick] OK: idx {i}/{list.Count} (start {startIndex}), skipped {usedCount} used + {invalidCount} invalid");
                 return p;
             }
             // Wrap to beginning of usable list.
             for (var i = 0; i < startIndex; i++)
             {
                 var p = list[i];
-                if (Utility.UsedSpawnPointIds.Contains(p.Id)) continue;
-                if (!IsValid(p, pmcList, pmcDistance) || !IsValid(p, scavList, scavDistance)) continue;
+                if (Utility.UsedSpawnPointIds.Contains(p.Id)) { usedCount++; continue; }
+                if (!IsValid(p, pmcList, pmcDistance) || !IsValid(p, scavList, scavDistance)) { invalidCount++; continue; }
                 Utility.UsedSpawnPointIds.Add(p.Id);
+                if (Plugin.DebugLogging)
+                    Plugin.LogSource.LogInfo($"[ABPS PMC pick] OK (wrap): idx {i}/{list.Count} (start was {startIndex}), skipped {usedCount} used + {invalidCount} invalid");
                 return p;
             }
+            if (Plugin.DebugLogging)
+                Plugin.LogSource.LogInfo($"[ABPS PMC pick] FAIL: no valid point | list={list.Count} (source {source.Count} -skip {skipCount}), pmcDistance={pmcDistance}, scavDistance={scavDistance}, used={usedCount}, invalid={invalidCount}, pmcs={pmcList?.Count ?? 0}, scavs={scavList?.Count ?? 0}");
             return null;
         }
 

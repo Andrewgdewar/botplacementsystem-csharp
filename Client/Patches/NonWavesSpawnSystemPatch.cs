@@ -241,36 +241,61 @@ namespace acidphantasm_botplacementsystem.Patches
             UnityEngine.Object.Destroy(botToDespawn);
         }
 
+        private static float _lastPmcTickLogTime = 0f;
+        private const float PmcTickLogInterval = 10f;
+
+        private static void LogPmcTick(string reason, string detail = null)
+        {
+            if (!Plugin.DebugLogging) return;
+            if (Time.time - _lastPmcTickLogTime < PmcTickLogInterval) return;
+            _lastPmcTickLogTime = Time.time;
+            Plugin.LogSource.LogInfo($"[ABPS PMC tick] {reason}{(detail != null ? " | " + detail : "")}");
+        }
+
         private static void TryToSpawnPmc(BotsController botsController, AbstractGame abstractGame, LocationSettingsClass.Location location)
         {
             // Per-map cap (config). If unknown map, bail.
             var mapName = (Utility.CurrentLocation ?? "default").ToLower();
             var maxPmcs = Utility.GetMaxPmcsForMap(mapName);
-            if (maxPmcs <= 0) return;
+            if (maxPmcs <= 0) { LogPmcTick("bail: unknown map", mapName); return; }
 
             // Hard cap: never exceed per-map PMC total for this raid.
-            if (Utility.PmcsSpawnedThisRaid >= maxPmcs) return;
+            if (Utility.PmcsSpawnedThisRaid >= maxPmcs)
+            {
+                LogPmcTick("bail: cap reached", $"{Utility.PmcsSpawnedThisRaid}/{maxPmcs}");
+                return;
+            }
 
             // Grace period: give starting PMCs (Time=1, server-scheduled) a head start.
             var raidElapsed = abstractGame.PastTime - location.BotStart;
-            if (raidElapsed < Plugin.PmcStartDelaySeconds) return;
+            if (raidElapsed < Plugin.PmcStartDelaySeconds)
+            {
+                LogPmcTick("bail: grace period", $"elapsed {raidElapsed:0}s / {Plugin.PmcStartDelaySeconds:0}s");
+                return;
+            }
 
             // Per-PMC attempt interval (independent from scav interval).
-            if (Time.time - Utility.LastPmcSpawnAttemptTime < Plugin.PmcSpawnAttemptInterval) return;
+            var sinceLast = Time.time - Utility.LastPmcSpawnAttemptTime;
+            if (sinceLast < Plugin.PmcSpawnAttemptInterval)
+            {
+                // No log here: would spam every frame between attempts.
+                return;
+            }
             Utility.LastPmcSpawnAttemptTime = Time.time;
 
             // Schedule curve: budget unlocks progressively over raid time.
             var botStart = (float)location.BotStart;
             var botStop = (float)location.BotStop;
+            double allowedFrac = 1.0;
+            double elapsedFrac = 0.0;
             if (botStop > botStart)
             {
-                var elapsedFrac = Math.Min(1.0, Math.Max(0.0, (abstractGame.PastTime - botStart) / (botStop - botStart)));
+                elapsedFrac = Math.Min(1.0, Math.Max(0.0, (abstractGame.PastTime - botStart) / (botStop - botStart)));
                 var startBudget = Plugin.PmcScheduleStartPercent;
                 var midTime = Plugin.PmcScheduleMidTimePercent;
                 var midBudget = Math.Max(Plugin.PmcScheduleStartPercent, Plugin.PmcScheduleMidBudgetPercent);
                 var fullTime = Math.Max(midTime + 0.001, Plugin.PmcScheduleFullPercent);
 
-                double allowedFrac;
                 if (elapsedFrac >= fullTime)
                     allowedFrac = 1.0;
                 else if (elapsedFrac <= midTime)
@@ -284,7 +309,12 @@ namespace acidphantasm_botplacementsystem.Patches
                     allowedFrac = midBudget + (1.0 - midBudget) * segment;
                 }
 
-                if (Utility.PmcsSpawnedThisRaid >= maxPmcs * allowedFrac) return;
+                if (Utility.PmcsSpawnedThisRaid >= maxPmcs * allowedFrac)
+                {
+                    if (Plugin.DebugLogging)
+                        Plugin.LogSource.LogInfo($"[ABPS PMC tick] bail: schedule curve | spawned {Utility.PmcsSpawnedThisRaid}/{maxPmcs}, allowed {maxPmcs * allowedFrac:0.0} (elapsedFrac {elapsedFrac:0.00}, allowedFrac {allowedFrac:0.00})");
+                    return;
+                }
             }
 
             // Group roll. Group size is additional members beyond the leader.
@@ -311,6 +341,9 @@ namespace acidphantasm_botplacementsystem.Patches
                 Utility.CurrentMapZones = botsController.BotSpawner.AllBotZones.ToList();
             var botZone = GetValidBotZone(spawnType, totalBots, botsController.BotSpawner.AllBotZones, mapName, botsController);
 
+            if (Plugin.DebugLogging)
+                Plugin.LogSource.LogInfo($"[ABPS PMC tick] attempting | {(isUsec ? "USEC" : "BEAR")} x{totalBots}, zone='{botZone}', elapsedFrac {elapsedFrac:0.00}, allowedFrac {allowedFrac:0.00}, raidElapsed {raidElapsed:0}s, spawned {Utility.PmcsSpawnedThisRaid}/{maxPmcs}");
+
             try
             {
                 botsController.ActivateBotsByWave(new BotWaveDataClass
@@ -329,7 +362,7 @@ namespace acidphantasm_botplacementsystem.Patches
                 Utility.PmcsSpawnedThisRaid += totalBots;
 
                 if (Plugin.DebugLogging)
-                    Plugin.LogSource.LogInfo($"[ABPS] PMC wave queued: {(isUsec ? "USEC" : "BEAR")} x{totalBots} on {mapName} ({Utility.PmcsSpawnedThisRaid}/{maxPmcs})");
+                    Plugin.LogSource.LogInfo($"[ABPS PMC tick] QUEUED {(isUsec ? "USEC" : "BEAR")} x{totalBots} on {mapName} ({Utility.PmcsSpawnedThisRaid}/{maxPmcs})");
             }
             catch (Exception ex)
             {
