@@ -46,7 +46,6 @@ namespace acidphantasm_botplacementsystem.Utils
         private const float PositionUpdateInterval = 120f; // Sample position every 2 minutes
         private const int MaxPositionHistory = 6;
         private const float MinDirectionDistance = 10f; // Min movement to establish direction
-        private const float BaseNoise = 30f; // Small fixed noise for variety
 
         public static readonly Dictionary<string, string[]> MapHotSpots = new()
         {
@@ -166,10 +165,10 @@ namespace acidphantasm_botplacementsystem.Utils
         /// Points behind score higher (deprioritized).
         /// Falls back to distance + noise when no travel direction is established.
         /// </summary>
-        public static float GetDirectionalScore(Vector3 spawnPoint, Vector3 playerPos)
+        public static float GetDirectionalScore(Vector3 spawnPoint, Vector3 playerPos, float noiseAmount)
         {
             var distance = Vector3.Distance(spawnPoint, playerPos);
-            var noise = UnityEngine.Random.Range(0f, BaseNoise);
+            var noise = noiseAmount > 0f ? UnityEngine.Random.Range(0f, noiseAmount) : 0f;
             
             if (!TravelDirection.HasValue || Plugin.DirectionalBias <= 0f)
                 return distance + noise;
@@ -266,12 +265,12 @@ namespace acidphantasm_botplacementsystem.Utils
                 }
             }
             
-            // Re-sort spawn point lists with directional scoring
+            // Re-sort spawn point lists with directional scoring (using scav noise as default)
             PlayerSpawnPoints = PlayerSpawnPoints
-                .OrderBy(sp => GetDirectionalScore(sp.Position, currentPos))
+                .OrderBy(sp => GetDirectionalScore(sp.Position, currentPos, Plugin.ScavSpawnNoise))
                 .ToList();
             BackupPlayerSpawnPoints = BackupPlayerSpawnPoints
-                .OrderBy(sp => GetDirectionalScore(sp.Position, currentPos))
+                .OrderBy(sp => GetDirectionalScore(sp.Position, currentPos, Plugin.ScavSpawnNoise))
                 .ToList();
             CombinedSpawnPoints = PlayerSpawnPoints
                 .Concat(BackupPlayerSpawnPoints)

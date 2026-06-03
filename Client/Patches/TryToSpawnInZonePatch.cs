@@ -80,7 +80,7 @@ namespace acidphantasm_botplacementsystem.Patches
             {
                 var playerPos = Utility.CurrentPlayerPosition.Value;
                 sorted = allPoints
-                    .OrderBy(sp => Utility.GetDirectionalScore(sp.Position, playerPos))
+                    .OrderBy(sp => Utility.GetDirectionalScore(sp.Position, playerPos, Plugin.ScavSpawnNoise))
                     .ToList();
             }
             else

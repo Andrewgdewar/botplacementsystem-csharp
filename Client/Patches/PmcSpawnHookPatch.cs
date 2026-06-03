@@ -139,8 +139,9 @@ namespace acidphantasm_botplacementsystem.Patches
         {
             var validSpawnPoints = new List<ISpawnPoint>();
 
-            var list = Utility.PlayerSpawnPoints;
-            // Lists are pre-sorted by distance from player spawn at raid start
+            // Re-sort PlayerSpawnPoints with PMC-specific noise (much fuzzier than scav default)
+            // and skip the closest N% so PMCs never spawn right on top of the player.
+            var list = SortAndSkipClosestForPmc(Utility.PlayerSpawnPoints);
 
             var foundInitialPoint = false;
 
@@ -172,13 +173,38 @@ namespace acidphantasm_botplacementsystem.Patches
             return validSpawnPoints;
         }
 
+        private static List<ISpawnPoint> SortAndSkipClosestForPmc(List<ISpawnPoint> source)
+        {
+            if (source == null || source.Count == 0) return new List<ISpawnPoint>();
+
+            List<ISpawnPoint> sorted;
+            if (Utility.CurrentPlayerPosition.HasValue)
+            {
+                var playerPos = Utility.CurrentPlayerPosition.Value;
+                sorted = source
+                    .OrderBy(sp => Utility.GetDirectionalScore(sp.Position, playerPos, Plugin.PmcSpawnNoise))
+                    .ToList();
+            }
+            else
+            {
+                sorted = new List<ISpawnPoint>(source);
+            }
+
+            var skipCount = (int)System.Math.Floor(sorted.Count * Plugin.PmcSkipClosestPercent);
+            if (skipCount > 0 && skipCount < sorted.Count)
+                sorted.RemoveRange(0, skipCount);
+
+            return sorted;
+        }
+
         private static List<ISpawnPoint> GetAnySpawnPoints(IReadOnlyCollection<Player> pmcPlayers, IReadOnlyCollection<Player> scavPlayers, float distance, float scavDistance, int neededPoints, bool backupToPlayer = false)
         {
             var validSpawnPoints = new List<ISpawnPoint>();
             ISpawnPoint firstPoint = null;
 
-            var alternativeList = backupToPlayer ? Utility.BackupPlayerSpawnPoints : Utility.CombinedSpawnPoints;
-            // Lists are pre-sorted by distance from player spawn at raid start
+            // Re-sort with PMC noise + skip closest N% (same as GetPlayerSpawnPoints).
+            var sourceList = backupToPlayer ? Utility.BackupPlayerSpawnPoints : Utility.CombinedSpawnPoints;
+            var alternativeList = SortAndSkipClosestForPmc(sourceList);
 
             foreach (var checkPoint in alternativeList)
             {

@@ -71,6 +71,9 @@ namespace acidphantasm_botplacementsystem
         private static ConfigEntry<float> _directionalBias;
         private static ConfigEntry<float> _shufflePercent;
         private static ConfigEntry<int> _shuffleStep;
+        private static ConfigEntry<float> _scavSpawnNoise;
+        private static ConfigEntry<float> _pmcSpawnNoise;
+        private static ConfigEntry<float> _pmcSkipClosestPercent;
 
         public static void InitAbpsConfig(ConfigFile config)
         {
@@ -605,6 +608,36 @@ namespace acidphantasm_botplacementsystem
                     new ConfigurationManagerAttributes { Order = _loadOrder-- }));
             Plugin.ShuffleStep = _shuffleStep.Value;
             _shuffleStep.SettingChanged += ABPS_SettingChanged;
+
+            _scavSpawnNoise = config.Bind(
+                GeneralConfig,
+                "Scav Spawn Noise",
+                50f,
+                new ConfigDescription("Random distance noise (meters) added to scav spawn scoring. Higher = scavs spread more, less predictable.",
+                    new AcceptableValueRange<float>(0f, 500f),
+                    new ConfigurationManagerAttributes { Order = _loadOrder-- }));
+            Plugin.ScavSpawnNoise = _scavSpawnNoise.Value;
+            _scavSpawnNoise.SettingChanged += ABPS_SettingChanged;
+
+            _pmcSpawnNoise = config.Bind(
+                GeneralConfig,
+                "PMC Spawn Noise",
+                400f,
+                new ConfigDescription("Random distance noise (meters) added to PMC spawn scoring. Higher = PMCs spread across the map, less likely to spawn near you.",
+                    new AcceptableValueRange<float>(0f, 1000f),
+                    new ConfigurationManagerAttributes { Order = _loadOrder-- }));
+            Plugin.PmcSpawnNoise = _pmcSpawnNoise.Value;
+            _pmcSpawnNoise.SettingChanged += ABPS_SettingChanged;
+
+            _pmcSkipClosestPercent = config.Bind(
+                GeneralConfig,
+                "PMC Skip Closest Percent",
+                0.1f,
+                new ConfigDescription("Skip this fraction of the closest valid spawn points when picking a PMC spawn. 0.1 = never use closest 10%.",
+                    new AcceptableValueRange<float>(0f, 0.5f),
+                    new ConfigurationManagerAttributes { Order = _loadOrder-- }));
+            Plugin.PmcSkipClosestPercent = _pmcSkipClosestPercent.Value;
+            _pmcSkipClosestPercent.SettingChanged += ABPS_SettingChanged;
         }
         private static void ABPS_SettingChanged(object sender, EventArgs e)
         {
@@ -663,6 +696,9 @@ namespace acidphantasm_botplacementsystem
             Plugin.DirectionalBias = _directionalBias.Value;
             Plugin.ShufflePercent = _shufflePercent.Value;
             Plugin.ShuffleStep = _shuffleStep.Value;
+            Plugin.ScavSpawnNoise = _scavSpawnNoise.Value;
+            Plugin.PmcSpawnNoise = _pmcSpawnNoise.Value;
+            Plugin.PmcSkipClosestPercent = _pmcSkipClosestPercent.Value;
         }
     }
 }

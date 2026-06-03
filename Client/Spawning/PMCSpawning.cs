@@ -57,10 +57,10 @@ namespace acidphantasm_botplacementsystem.Spawning
                         // Pre-sort spawn point lists by distance (no direction yet at raid start)
                         var spawnPos = player.Position;
                         Utility.PlayerSpawnPoints = Utility.PlayerSpawnPoints
-                            .OrderBy(sp => Utility.GetDirectionalScore(sp.Position, spawnPos))
+                            .OrderBy(sp => Utility.GetDirectionalScore(sp.Position, spawnPos, Plugin.ScavSpawnNoise))
                             .ToList();
                         Utility.BackupPlayerSpawnPoints = Utility.BackupPlayerSpawnPoints
-                            .OrderBy(sp => Utility.GetDirectionalScore(sp.Position, spawnPos))
+                            .OrderBy(sp => Utility.GetDirectionalScore(sp.Position, spawnPos, Plugin.ScavSpawnNoise))
                             .ToList();
                         Utility.CombinedSpawnPoints = Utility.PlayerSpawnPoints
                             .Concat(Utility.BackupPlayerSpawnPoints)

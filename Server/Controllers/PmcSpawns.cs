@@ -51,25 +51,49 @@ public class PmcSpawns(
         var waveGroupChance = ModConfig.Config.PmcConfig.Waves.GroupChance;
         var firstWaveTimer = ModConfig.Config.PmcConfig.Waves.DelayBeforeFirstWave;
         var waveTimer = ModConfig.Config.PmcConfig.Waves.SecondsBetweenWaves;
-        var endWavesAtRemainingTime = ModConfig.Config.PmcConfig.Waves.StopWavesBeforeEndOfRaidLimit;
         var spawnStaggerMin = 5;
         var spawnStaggerMax = 15;
-        var waveCount = Math.Floor((double) (((escapeTimeLimit * 60) - endWavesAtRemainingTime) - firstWaveTimer) / waveTimer);
-        var currentWaveTime = firstWaveTimer;
-        
-        for (var i = 1; i <= waveCount; i++)
+
+        // Hard cap total PMCs (starting + waves) at MaxTotalPmcs[location].
+        // Wave budget = max - starting cap. Tapers from 100% wave size at taperStartPercent
+        // down to 0% at taperEndPercent of total raid time. Hard stop at taperEndPercent.
+        var raidSeconds = escapeTimeLimit * 60;
+        ModConfig.Config.PmcConfig.Waves.MaxTotalPmcs.TryGetValue(location, out var maxTotalPmcs);
+        var startingPmcMax = ModConfig.Config.PmcConfig.StartingPMCs.MapLimits[location].Max;
+        var waveBudget = Math.Max(0, maxTotalPmcs - startingPmcMax);
+        var taperStartTime = raidSeconds * ModConfig.Config.PmcConfig.Waves.TaperStartPercent;
+        var taperEndTime = raidSeconds * ModConfig.Config.PmcConfig.Waves.TaperEndPercent;
+
+        var totalSpawned = 0;
+        var currentWaveTime = (double)firstWaveTimer;
+
+        while (currentWaveTime < taperEndTime && totalSpawned < waveBudget)
         {
+            double sizeFraction;
+            if (currentWaveTime < taperStartTime)
+            {
+                sizeFraction = 1.0;
+            }
+            else
+            {
+                var taperRange = taperEndTime - taperStartTime;
+                sizeFraction = taperRange > 0 ? Math.Max(0, 1.0 - (currentWaveTime - taperStartTime) / taperRange) : 0;
+            }
+
+            var thisWaveMax = Math.Min((int)Math.Ceiling(waveMaxPmcCount * sizeFraction), waveBudget - totalSpawned);
+            if (thisWaveMax <= 0) break;
+
             var currentPmcCount = 0;
             var groupCount = 0;
             var currentSpawnOffset = 0d;
-            
-            while (currentPmcCount < waveMaxPmcCount)
+
+            while (currentPmcCount < thisWaveMax)
             {
                 var canBeAGroup = groupCount < waveGroupLimit;
                 var groupSize = 0;
-                var remainingSpots = waveMaxPmcCount - currentPmcCount;
+                var remainingSpots = thisWaveMax - currentPmcCount;
                 var isAGroup = remainingSpots > 1 && randomUtil.GetChance100(waveGroupChance);
-                if (isAGroup && canBeAGroup) 
+                if (isAGroup && canBeAGroup)
                 {
                     groupSize = Math.Min(remainingSpots - 1, randomUtil.GetInt(1, waveGroupSize));
                     groupCount++;
@@ -79,7 +103,7 @@ public class PmcSpawns(
                 var bossDefaultData = cloner.Clone(GetDefaultValuesForBoss(pmcType));
 
                 if (bossDefaultData is null) continue;
-                
+
                 bossDefaultData[0].BossEscortAmount = groupSize.ToString();
                 bossDefaultData[0].Time = currentWaveTime + currentSpawnOffset;
                 bossDefaultData[0].BossDifficulty = weightedRandomHelper.GetWeightedValue(difficultyWeights);
@@ -87,14 +111,16 @@ public class PmcSpawns(
                 bossDefaultData[0].BossZone = "";
                 bossDefaultData[0].IgnoreMaxBots = ignoreMaxBotCaps;
                 currentPmcCount += groupSize + 1;
+                totalSpawned += groupSize + 1;
                 pmcWaveSpawnInfo.Add(bossDefaultData[0]);
-                
+
                 currentSpawnOffset += randomUtil.GetInt(spawnStaggerMin, spawnStaggerMax);
             }
-            
+
             currentWaveTime += waveTimer;
         }
 
+        logger.Info($"[ABPS] {location}: scheduled {totalSpawned} PMC waves (budget {waveBudget}, max {maxTotalPmcs}, taper {taperStartTime:0}s-{taperEndTime:0}s)");
         return pmcWaveSpawnInfo;
     }
 

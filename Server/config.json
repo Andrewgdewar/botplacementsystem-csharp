@@ -17,52 +17,52 @@
       "maxGroupCount": 4,
       "mapLimits": {
         "bigmap": {
-          "min": 8,
-          "max": 10
+          "min": 1,
+          "max": 2
         },
         "factory4_day": {
-          "min": 5,
-          "max": 7
+          "min": 1,
+          "max": 2
         },
         "factory4_night": {
-          "min": 5,
-          "max": 7
+          "min": 1,
+          "max": 2
         },
         "interchange": {
-          "min": 9,
-          "max": 13
+          "min": 1,
+          "max": 2
         },
         "laboratory": {
-          "min": 7,
-          "max": 9
+          "min": 1,
+          "max": 2
         },
         "lighthouse": {
-          "min": 7,
-          "max": 10
+          "min": 1,
+          "max": 2
         },
         "rezervbase": {
-          "min": 8,
-          "max": 10
+          "min": 1,
+          "max": 2
         },
         "sandbox": {
-          "min": 8,
-          "max": 11
+          "min": 1,
+          "max": 2
         },
         "sandbox_high": {
-          "min": 8,
-          "max": 11
+          "min": 1,
+          "max": 2
         },
         "shoreline": {
-          "min": 9,
-          "max": 13
+          "min": 1,
+          "max": 2
         },
         "tarkovstreets": {
-          "min": 7,
-          "max": 10
+          "min": 1,
+          "max": 2
         },
         "woods": {
-          "min": 9,
-          "max": 13
+          "min": 1,
+          "max": 2
         },
         "labyrinth": {
           "min": 0,
@@ -80,7 +80,24 @@
       "maxBotsPerWave": 4,
       "delayBeforeFirstWave": 500,
       "secondsBetweenWaves": 360,
-      "stopWavesBeforeEndOfRaidLimit": 300
+      "stopWavesBeforeEndOfRaidLimit": 300,
+      "maxTotalPmcs": {
+        "bigmap": 12,
+        "factory4_day": 5,
+        "factory4_night": 5,
+        "interchange": 12,
+        "laboratory": 10,
+        "lighthouse": 12,
+        "rezervbase": 12,
+        "sandbox": 7,
+        "sandbox_high": 9,
+        "shoreline": 12,
+        "tarkovstreets": 12,
+        "woods": 10,
+        "labyrinth": 8
+      },
+      "taperStartPercent": 0.5,
+      "taperEndPercent": 0.7
     }
   },
   "scavConfig": {
