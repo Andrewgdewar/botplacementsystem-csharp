@@ -152,40 +152,12 @@ namespace acidphantasm_botplacementsystem.Patches
 
         private static List<ISpawnPoint> GetPlayerSpawnPoints(IReadOnlyCollection<Player> pmcPlayers, IReadOnlyCollection<Player> scavPlayers, float distance, float scavDistance, int neededPoints)
         {
-            var validSpawnPoints = new List<ISpawnPoint>();
-
-            // Re-sort PlayerSpawnPoints with PMC-specific noise (much fuzzier than scav default)
-            // and skip the closest N% so PMCs never spawn right on top of the player.
+            // PMC lists are sorted ONCE at raid start (PMCSpawning.cs) with fuzzy PMC noise.
+            // Skip the closest N%, then deterministically index into the remaining list based
+            // on how many PMCs have spawned so far / wave budget, so each successive PMC picks
+            // a point further into the sorted list (spread across the whole sorted range).
             var list = SortAndSkipClosestForPmc(Utility.PlayerSpawnPoints);
-
-            var foundInitialPoint = false;
-
-            foreach (var checkPoint in list)
-            {
-                if (validSpawnPoints.Count == neededPoints)
-                {
-                    return validSpawnPoints;
-                }
-
-                switch (foundInitialPoint)
-                {
-                    case true when Vector3.Distance(checkPoint.Position, validSpawnPoints[0].Position) <= 20f:
-                        validSpawnPoints.Add(checkPoint);
-                        break;
-                    case false when IsValid(checkPoint, pmcPlayers, distance):
-                    {
-                        if (IsValid(checkPoint, scavPlayers, scavDistance))
-                        {
-                            validSpawnPoints.Add(checkPoint);
-                            foundInitialPoint = true;
-                        }
-
-                        break;
-                    }
-                }
-            }
-
-            return validSpawnPoints;
+            return PickFromDeterministicIndex(list, pmcPlayers, scavPlayers, distance, scavDistance, neededPoints);
         }
 
         private static List<ISpawnPoint> SortAndSkipClosestForPmc(List<ISpawnPoint> source)
@@ -203,28 +175,74 @@ namespace acidphantasm_botplacementsystem.Patches
 
         private static List<ISpawnPoint> GetAnySpawnPoints(IReadOnlyCollection<Player> pmcPlayers, IReadOnlyCollection<Player> scavPlayers, float distance, float scavDistance, int neededPoints, bool backupToPlayer = false)
         {
-            var validSpawnPoints = new List<ISpawnPoint>();
-            ISpawnPoint firstPoint = null;
-
-            // Re-sort with PMC noise + skip closest N% (same as GetPlayerSpawnPoints).
+            // Same deterministic index approach as GetPlayerSpawnPoints, but on the fallback list.
             var sourceList = backupToPlayer ? Utility.BackupPlayerSpawnPoints : Utility.CombinedSpawnPoints;
             var alternativeList = SortAndSkipClosestForPmc(sourceList);
+            return PickFromDeterministicIndex(alternativeList, pmcPlayers, scavPlayers, distance, scavDistance, neededPoints);
+        }
 
-            foreach (var checkPoint in alternativeList)
+        /// <summary>
+        /// Picks a target slot in the (already-sorted, already-skipped) list based on
+        /// how many PMCs have spawned so far. Starts the search at that slot to spread
+        /// successive PMCs across the entire sorted distance range. Once a valid initial
+        /// point is found, cluster group members within 20m of it.
+        /// </summary>
+        private static List<ISpawnPoint> PickFromDeterministicIndex(
+            List<ISpawnPoint> list,
+            IReadOnlyCollection<Player> pmcPlayers,
+            IReadOnlyCollection<Player> scavPlayers,
+            float distance,
+            float scavDistance,
+            int neededPoints)
+        {
+            var validSpawnPoints = new List<ISpawnPoint>();
+            if (list.Count == 0) return validSpawnPoints;
+
+            // Wave budget = total cap minus starting reserve. Index = (already spawned / budget) * list size.
+            var mapName = (Utility.CurrentLocation ?? "default").ToLower();
+            var maxPmcs = GetMaxPmcsForMap(mapName);
+            var startingReserve = 2; // matches server startingPMCs map limit max (1-2 default)
+            var waveBudget = System.Math.Max(1, maxPmcs - startingReserve);
+            var alreadySpawned = System.Math.Max(0, Utility.PmcsSpawnedThisRaid - startingReserve);
+            var targetFraction = System.Math.Min(0.999f, (float)alreadySpawned / waveBudget);
+            var startIndex = System.Math.Min(list.Count - 1, (int)System.Math.Floor(list.Count * targetFraction));
+
+            if (Plugin.DebugLogging)
+                Plugin.LogSource.LogInfo($"[ABPS] PMC index pick: spawned={alreadySpawned}/{waveBudget} fraction={targetFraction:0.00} startIdx={startIndex}/{list.Count}");
+
+            // Forward search from startIndex for the first valid point.
+            ISpawnPoint firstPoint = null;
+            for (var i = startIndex; i < list.Count; i++)
             {
-                if (validSpawnPoints.Count == neededPoints)
-                    return validSpawnPoints;
-
+                var checkPoint = list[i];
                 if (!IsValid(checkPoint, pmcPlayers, distance) || !IsValid(checkPoint, scavPlayers, scavDistance))
                     continue;
+                firstPoint = checkPoint;
+                validSpawnPoints.Add(checkPoint);
+                break;
+            }
 
-                if (firstPoint == null)
+            // If nothing valid from startIndex onward, wrap back to beginning of usable list.
+            if (firstPoint == null)
+            {
+                for (var i = 0; i < startIndex; i++)
                 {
+                    var checkPoint = list[i];
+                    if (!IsValid(checkPoint, pmcPlayers, distance) || !IsValid(checkPoint, scavPlayers, scavDistance))
+                        continue;
                     firstPoint = checkPoint;
                     validSpawnPoints.Add(checkPoint);
-                    continue;
+                    break;
                 }
+            }
 
+            if (firstPoint == null) return validSpawnPoints;
+
+            // Cluster group members within 20m of the picked point.
+            foreach (var checkPoint in list)
+            {
+                if (validSpawnPoints.Count >= neededPoints) break;
+                if (checkPoint == firstPoint) continue;
                 if (Vector3.Distance(checkPoint.Position, firstPoint.Position) <= 20f)
                     validSpawnPoints.Add(checkPoint);
             }
