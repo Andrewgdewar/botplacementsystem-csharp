@@ -38,6 +38,19 @@ namespace acidphantasm_botplacementsystem
         private static ConfigEntry<int> _streetsMaxPmcs;
         private static ConfigEntry<int> _woodsMaxPmcs;
         private static ConfigEntry<int> _labyrinthMaxPmcs;
+
+        private static ConfigEntry<int> _customsMaxScavs;
+        private static ConfigEntry<int> _factoryMaxScavs;
+        private static ConfigEntry<int> _interchangeMaxScavs;
+        private static ConfigEntry<int> _labsMaxScavs;
+        private static ConfigEntry<int> _lighthouseMaxScavs;
+        private static ConfigEntry<int> _reserveMaxScavs;
+        private static ConfigEntry<int> _groundZeroMaxScavs;
+        private static ConfigEntry<int> _groundZeroHighMaxScavs;
+        private static ConfigEntry<int> _shorelineMaxScavs;
+        private static ConfigEntry<int> _streetsMaxScavs;
+        private static ConfigEntry<int> _woodsMaxScavs;
+        private static ConfigEntry<int> _labyrinthMaxScavs;
         
         private const string BossConfig = "3. Boss Settings";
         private static ConfigEntry<bool> _regressiveChances;
@@ -102,6 +115,17 @@ namespace acidphantasm_botplacementsystem
                 defaultValue,
                 new ConfigDescription(description,
                     new AcceptableValueRange<int>(0, 50),
+                    new ConfigurationManagerAttributes { Order = _loadOrder-- }));
+        }
+
+        private static ConfigEntry<int> BindMaxScav(ConfigFile config, string label, int defaultValue, string description)
+        {
+            return config.Bind(
+                GeneralConfig,
+                label,
+                defaultValue,
+                new ConfigDescription(description,
+                    new AcceptableValueRange<int>(0, 100),
                     new ConfigurationManagerAttributes { Order = _loadOrder-- }));
         }
 
@@ -310,6 +334,57 @@ namespace acidphantasm_botplacementsystem
             _labyrinthMaxPmcs = BindMaxPmc(config, "Max PMCs - Labyrinth", 8, MaxPmcsDesc);
             Plugin.LabyrinthMaxPmcs = _labyrinthMaxPmcs.Value;
             _labyrinthMaxPmcs.SettingChanged += ABPS_SettingChanged;
+
+            // Per-map total scav spawn budget per raid (1 player baseline; scales by Per-Player Scav Multiplier).
+            const string MaxScavsDesc = "Max total scav spawns per raid (1 player baseline). Scaled by Per-Player Scav Multiplier as players are added.\nChanges do not take effect until next raid.";
+
+            _customsMaxScavs = BindMaxScav(config, "Max Scavs Per Raid - Customs", 20, MaxScavsDesc);
+            Plugin.CustomsMaxScavs = _customsMaxScavs.Value;
+            _customsMaxScavs.SettingChanged += ABPS_SettingChanged;
+
+            _factoryMaxScavs = BindMaxScav(config, "Max Scavs Per Raid - Factory", 10, MaxScavsDesc);
+            Plugin.FactoryMaxScavs = _factoryMaxScavs.Value;
+            _factoryMaxScavs.SettingChanged += ABPS_SettingChanged;
+
+            _interchangeMaxScavs = BindMaxScav(config, "Max Scavs Per Raid - Interchange", 22, MaxScavsDesc);
+            Plugin.InterchangeMaxScavs = _interchangeMaxScavs.Value;
+            _interchangeMaxScavs.SettingChanged += ABPS_SettingChanged;
+
+            _labsMaxScavs = BindMaxScav(config, "Max Scavs Per Raid - Labs", 18, MaxScavsDesc);
+            Plugin.LabsMaxScavs = _labsMaxScavs.Value;
+            _labsMaxScavs.SettingChanged += ABPS_SettingChanged;
+
+            _lighthouseMaxScavs = BindMaxScav(config, "Max Scavs Per Raid - Lighthouse", 20, MaxScavsDesc);
+            Plugin.LighthouseMaxScavs = _lighthouseMaxScavs.Value;
+            _lighthouseMaxScavs.SettingChanged += ABPS_SettingChanged;
+
+            _reserveMaxScavs = BindMaxScav(config, "Max Scavs Per Raid - Reserve", 22, MaxScavsDesc);
+            Plugin.ReserveMaxScavs = _reserveMaxScavs.Value;
+            _reserveMaxScavs.SettingChanged += ABPS_SettingChanged;
+
+            _groundZeroMaxScavs = BindMaxScav(config, "Max Scavs Per Raid - Ground Zero", 14, MaxScavsDesc);
+            Plugin.GroundZeroMaxScavs = _groundZeroMaxScavs.Value;
+            _groundZeroMaxScavs.SettingChanged += ABPS_SettingChanged;
+
+            _groundZeroHighMaxScavs = BindMaxScav(config, "Max Scavs Per Raid - Ground Zero High", 14, MaxScavsDesc);
+            Plugin.GroundZeroHighMaxScavs = _groundZeroHighMaxScavs.Value;
+            _groundZeroHighMaxScavs.SettingChanged += ABPS_SettingChanged;
+
+            _shorelineMaxScavs = BindMaxScav(config, "Max Scavs Per Raid - Shoreline", 24, MaxScavsDesc);
+            Plugin.ShorelineMaxScavs = _shorelineMaxScavs.Value;
+            _shorelineMaxScavs.SettingChanged += ABPS_SettingChanged;
+
+            _streetsMaxScavs = BindMaxScav(config, "Max Scavs Per Raid - Streets", 18, MaxScavsDesc);
+            Plugin.StreetsMaxScavs = _streetsMaxScavs.Value;
+            _streetsMaxScavs.SettingChanged += ABPS_SettingChanged;
+
+            _woodsMaxScavs = BindMaxScav(config, "Max Scavs Per Raid - Woods", 24, MaxScavsDesc);
+            Plugin.WoodsMaxScavs = _woodsMaxScavs.Value;
+            _woodsMaxScavs.SettingChanged += ABPS_SettingChanged;
+
+            _labyrinthMaxScavs = BindMaxScav(config, "Max Scavs Per Raid - Labyrinth", 12, MaxScavsDesc);
+            Plugin.LabyrinthMaxScavs = _labyrinthMaxScavs.Value;
+            _labyrinthMaxScavs.SettingChanged += ABPS_SettingChanged;
 
             
             // Boss stuff
@@ -810,6 +885,19 @@ namespace acidphantasm_botplacementsystem
             Plugin.StreetsMaxPmcs = _streetsMaxPmcs.Value;
             Plugin.WoodsMaxPmcs = _woodsMaxPmcs.Value;
             Plugin.LabyrinthMaxPmcs = _labyrinthMaxPmcs.Value;
+
+            Plugin.CustomsMaxScavs = _customsMaxScavs.Value;
+            Plugin.FactoryMaxScavs = _factoryMaxScavs.Value;
+            Plugin.InterchangeMaxScavs = _interchangeMaxScavs.Value;
+            Plugin.LabsMaxScavs = _labsMaxScavs.Value;
+            Plugin.LighthouseMaxScavs = _lighthouseMaxScavs.Value;
+            Plugin.ReserveMaxScavs = _reserveMaxScavs.Value;
+            Plugin.GroundZeroMaxScavs = _groundZeroMaxScavs.Value;
+            Plugin.GroundZeroHighMaxScavs = _groundZeroHighMaxScavs.Value;
+            Plugin.ShorelineMaxScavs = _shorelineMaxScavs.Value;
+            Plugin.StreetsMaxScavs = _streetsMaxScavs.Value;
+            Plugin.WoodsMaxScavs = _woodsMaxScavs.Value;
+            Plugin.LabyrinthMaxScavs = _labyrinthMaxScavs.Value;
 
             Plugin.RegressiveChances = _regressiveChances.Value;
             Plugin.ProgressiveChances = _progressiveChances.Value;

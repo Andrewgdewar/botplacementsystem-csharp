@@ -41,6 +41,19 @@ namespace acidphantasm_botplacementsystem
         public static int StreetsMaxPmcs;
         public static int WoodsMaxPmcs;
         public static int LabyrinthMaxPmcs;
+
+        public static int CustomsMaxScavs;
+        public static int FactoryMaxScavs;
+        public static int InterchangeMaxScavs;
+        public static int LabsMaxScavs;
+        public static int LighthouseMaxScavs;
+        public static int ReserveMaxScavs;
+        public static int GroundZeroMaxScavs;
+        public static int GroundZeroHighMaxScavs;
+        public static int ShorelineMaxScavs;
+        public static int StreetsMaxScavs;
+        public static int WoodsMaxScavs;
+        public static int LabyrinthMaxScavs;
         
         public static bool RegressiveChances;
         public static bool ProgressiveChances;

@@ -92,7 +92,15 @@ namespace acidphantasm_botplacementsystem.Patches
                 return false;
             }
             
-            if (Utility.BotsSpawnedPerPlayer >= ___botsController_0.BotLocationModifier.NonWaveSpawnBotsLimitPerPlayerPvE)
+            // Per-map per-player total scav budget (configurable, defaults sized per map).
+            // Scaled at spawn time by PerPlayerScavMultiplier.
+            var mapNameForBudget = (Utility.CurrentLocation ?? "default").ToLower();
+            var perPlayerBudget = GetMaxScavsForMap(mapNameForBudget);
+            // Fall back to vanilla per-player cap if no per-map config (eg unrecognized map).
+            if (perPlayerBudget <= 0)
+                perPlayerBudget = ___botsController_0.BotLocationModifier.NonWaveSpawnBotsLimitPerPlayerPvE;
+
+            if (Utility.BotsSpawnedPerPlayer >= perPlayerBudget)
             {
                 return false;
             }
@@ -100,7 +108,7 @@ namespace acidphantasm_botplacementsystem.Patches
             // Schedule gate: cap the per-player budget based on raid progress so scavs
             // spawn steadily throughout the raid instead of all in the first window.
             // Piecewise linear: (0%, Start), (MidTime, MidBudget), (FullTime, 100%).
-            var budgetCap = (double)___botsController_0.BotLocationModifier.NonWaveSpawnBotsLimitPerPlayerPvE;
+            var budgetCap = (double)perPlayerBudget;
             var botStart = (float)___location_0.BotStart;
             var botStop = (float)___location_0.BotStop;
             if (botStop > botStart && budgetCap > 0)
@@ -251,6 +259,26 @@ namespace acidphantasm_botplacementsystem.Patches
             }
 
             return "";
+        }
+
+        private static int GetMaxScavsForMap(string mapName)
+        {
+            return mapName switch
+            {
+                "bigmap" => Plugin.CustomsMaxScavs,
+                "factory4_day" or "factory4_night" => Plugin.FactoryMaxScavs,
+                "interchange" => Plugin.InterchangeMaxScavs,
+                "laboratory" => Plugin.LabsMaxScavs,
+                "lighthouse" => Plugin.LighthouseMaxScavs,
+                "rezervbase" => Plugin.ReserveMaxScavs,
+                "sandbox" => Plugin.GroundZeroMaxScavs,
+                "sandbox_high" => Plugin.GroundZeroHighMaxScavs,
+                "shoreline" => Plugin.ShorelineMaxScavs,
+                "tarkovstreets" => Plugin.StreetsMaxScavs,
+                "woods" => Plugin.WoodsMaxScavs,
+                "labyrinth" => Plugin.LabyrinthMaxScavs,
+                _ => 0,
+            };
         }
     }
 }
