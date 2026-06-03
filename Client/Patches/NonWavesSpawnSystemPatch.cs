@@ -96,6 +96,44 @@ namespace acidphantasm_botplacementsystem.Patches
             {
                 return false;
             }
+
+            // Schedule gate: cap the per-player budget based on raid progress so scavs
+            // spawn steadily throughout the raid instead of all in the first window.
+            // Piecewise linear: (0%, Start), (MidTime, MidBudget), (FullTime, 100%).
+            var budgetCap = (double)___botsController_0.BotLocationModifier.NonWaveSpawnBotsLimitPerPlayerPvE;
+            var botStart = (float)___location_0.BotStart;
+            var botStop = (float)___location_0.BotStop;
+            if (botStop > botStart && budgetCap > 0)
+            {
+                var elapsedFrac = Math.Min(1.0, Math.Max(0.0, (___abstractGame_0.PastTime - botStart) / (botStop - botStart)));
+                var startBudget = Plugin.ScavScheduleStartPercent;
+                var midTime = Plugin.ScavScheduleMidTimePercent;
+                var midBudget = Plugin.ScavScheduleMidBudgetPercent;
+                var fullTime = Plugin.ScavScheduleFullPercent;
+
+                double allowedFrac;
+                if (elapsedFrac >= fullTime)
+                {
+                    allowedFrac = 1.0;
+                }
+                else if (elapsedFrac <= midTime)
+                {
+                    // Lerp from startBudget at 0 to midBudget at midTime.
+                    var segment = midTime > 0 ? elapsedFrac / midTime : 1.0;
+                    allowedFrac = startBudget + (midBudget - startBudget) * segment;
+                }
+                else
+                {
+                    // Lerp from midBudget at midTime to 1.0 at fullTime.
+                    var segment = (elapsedFrac - midTime) / Math.Max(0.0001, fullTime - midTime);
+                    allowedFrac = midBudget + (1.0 - midBudget) * segment;
+                }
+
+                if (Utility.BotsSpawnedPerPlayer >= budgetCap * allowedFrac)
+                {
+                    return false;
+                }
+            }
             
             var mapName = Utility.CurrentLocation.ToLower();
             if (Utility.CurrentMapZones.Count == 0)

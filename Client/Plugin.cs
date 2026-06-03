@@ -90,6 +90,10 @@ namespace acidphantasm_botplacementsystem
         public static float PmcSkipClosestPercent;
         public static float ScavSkipClosestPercent;
         public static float PerPlayerScavMultiplier;
+        public static float ScavScheduleStartPercent;
+        public static float ScavScheduleMidTimePercent;
+        public static float ScavScheduleMidBudgetPercent;
+        public static float ScavScheduleFullPercent;
 
         public static BotSpawner BotSpawnerInstance;
 

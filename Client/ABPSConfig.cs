@@ -89,6 +89,10 @@ namespace acidphantasm_botplacementsystem
         private static ConfigEntry<float> _pmcSkipClosestPercent;
         private static ConfigEntry<float> _scavSkipClosestPercent;
         private static ConfigEntry<float> _perPlayerScavMultiplier;
+        private static ConfigEntry<float> _scavScheduleStartPercent;
+        private static ConfigEntry<float> _scavScheduleMidTimePercent;
+        private static ConfigEntry<float> _scavScheduleMidBudgetPercent;
+        private static ConfigEntry<float> _scavScheduleFullPercent;
 
         private static ConfigEntry<int> BindMaxPmc(ConfigFile config, string label, int defaultValue, string description)
         {
@@ -736,6 +740,46 @@ namespace acidphantasm_botplacementsystem
                     new ConfigurationManagerAttributes { Order = _loadOrder-- }));
             Plugin.ScavSkipClosestPercent = _scavSkipClosestPercent.Value;
             _scavSkipClosestPercent.SettingChanged += ABPS_SettingChanged;
+
+            _scavScheduleStartPercent = config.Bind(
+                GeneralConfig,
+                "Scav Schedule Start Budget Pct",
+                0.15f,
+                new ConfigDescription("Fraction of the per-player scav budget unlocked at raid start. Ensures the map fills with some scavs immediately.",
+                    new AcceptableValueRange<float>(0f, 1f),
+                    new ConfigurationManagerAttributes { Order = _loadOrder-- }));
+            Plugin.ScavScheduleStartPercent = _scavScheduleStartPercent.Value;
+            _scavScheduleStartPercent.SettingChanged += ABPS_SettingChanged;
+
+            _scavScheduleMidTimePercent = config.Bind(
+                GeneralConfig,
+                "Scav Schedule Mid Time Pct",
+                0.30f,
+                new ConfigDescription("Raid time (as fraction of BotStart..BotStop) at which the mid budget point is hit.",
+                    new AcceptableValueRange<float>(0.05f, 0.95f),
+                    new ConfigurationManagerAttributes { Order = _loadOrder-- }));
+            Plugin.ScavScheduleMidTimePercent = _scavScheduleMidTimePercent.Value;
+            _scavScheduleMidTimePercent.SettingChanged += ABPS_SettingChanged;
+
+            _scavScheduleMidBudgetPercent = config.Bind(
+                GeneralConfig,
+                "Scav Schedule Mid Budget Pct",
+                0.50f,
+                new ConfigDescription("Fraction of the per-player scav budget unlocked at the mid time point. Should be > Start, < 1.0.",
+                    new AcceptableValueRange<float>(0f, 1f),
+                    new ConfigurationManagerAttributes { Order = _loadOrder-- }));
+            Plugin.ScavScheduleMidBudgetPercent = _scavScheduleMidBudgetPercent.Value;
+            _scavScheduleMidBudgetPercent.SettingChanged += ABPS_SettingChanged;
+
+            _scavScheduleFullPercent = config.Bind(
+                GeneralConfig,
+                "Scav Schedule Full Time Pct",
+                0.70f,
+                new ConfigDescription("Raid time (as fraction of BotStart..BotStop) at which 100% of the budget is unlocked. Beyond this point, normal cap applies.",
+                    new AcceptableValueRange<float>(0.1f, 1f),
+                    new ConfigurationManagerAttributes { Order = _loadOrder-- }));
+            Plugin.ScavScheduleFullPercent = _scavScheduleFullPercent.Value;
+            _scavScheduleFullPercent.SettingChanged += ABPS_SettingChanged;
         }
         private static void ABPS_SettingChanged(object sender, EventArgs e)
         {
@@ -812,6 +856,10 @@ namespace acidphantasm_botplacementsystem
             Plugin.PmcSkipClosestPercent = _pmcSkipClosestPercent.Value;
             Plugin.ScavSkipClosestPercent = _scavSkipClosestPercent.Value;
             Plugin.PerPlayerScavMultiplier = _perPlayerScavMultiplier.Value;
+            Plugin.ScavScheduleStartPercent = _scavScheduleStartPercent.Value;
+            Plugin.ScavScheduleMidTimePercent = _scavScheduleMidTimePercent.Value;
+            Plugin.ScavScheduleMidBudgetPercent = _scavScheduleMidBudgetPercent.Value;
+            Plugin.ScavScheduleFullPercent = _scavScheduleFullPercent.Value;
         }
     }
 }
