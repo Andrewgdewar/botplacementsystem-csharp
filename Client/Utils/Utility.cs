@@ -19,7 +19,6 @@ namespace acidphantasm_botplacementsystem.Utils
         public static List<ISpawnPoint> PlayerSpawnPoints = new();
         public static List<ISpawnPoint> BackupPlayerSpawnPoints = new();
         public static List<ISpawnPoint> CombinedSpawnPoints = new();
-        private static Dictionary<string, List<ISpawnPoint>> _cachedZoneSpawnPoints = new();
         public static Dictionary<string, BotZone> SpawnPointToZone = new(); // point ID → zone
         public static List<ISpawnPoint> AllBotSpawnPoints = new(); // flat list of all bot spawn points
         
@@ -108,7 +107,6 @@ namespace acidphantasm_botplacementsystem.Utils
             _positionHistory.Clear();
             _lastPositionUpdateTime = 0f;
             
-            _cachedZoneSpawnPoints.Clear();
             SpawnPointToZone.Clear();
             AllBotSpawnPoints.Clear();
             
@@ -142,24 +140,12 @@ namespace acidphantasm_botplacementsystem.Utils
                     {
                         continue;
                     }
-                    if (!_cachedZoneSpawnPoints.TryGetValue(zoneName, out var list))
-                    {
-                        list = new List<ISpawnPoint>();
-                        _cachedZoneSpawnPoints[zoneName] = list;
-                    }
-
-                    list.Add(spawnPoint);
                     AllBotSpawnPoints.Add(spawnPoint);
                     SpawnPointToZone[spawnPoint.Id] = botZone;
                 }
             }
             
             Initialized = true;
-        }
-        
-        public static List<ISpawnPoint> GetZoneSpawnPoints(BotZone botZone)
-        {
-            return _cachedZoneSpawnPoints.TryGetValue(botZone.NameZone, out var points) ? points : new List<ISpawnPoint>();
         }
         
         public static BotZone GetNewValidBotZone()
@@ -236,6 +222,55 @@ namespace acidphantasm_botplacementsystem.Utils
         public static bool IsPlayerHeadless(IPlayer player)
         {
             return player.Profile.Info.MemberCategory == EMemberCategory.UnitTest;
+        }
+
+        /// <summary>
+        /// Per-map total PMC count for the raid. Single source of truth used by both
+        /// PmcSpawnHookPatch (starting PMCs runtime cap), NonWavesSpawnSystemPatch
+        /// (wave PMC tick), and TryToSpawnInZonePatch (deterministic index spacing).
+        /// </summary>
+        public static int GetMaxPmcsForMap(string mapName)
+        {
+            return mapName switch
+            {
+                "bigmap" => Plugin.CustomsMaxPmcs,
+                "factory4_day" or "factory4_night" => Plugin.FactoryMaxPmcs,
+                "interchange" => Plugin.InterchangeMaxPmcs,
+                "laboratory" => Plugin.LabsMaxPmcs,
+                "lighthouse" => Plugin.LighthouseMaxPmcs,
+                "rezervbase" => Plugin.ReserveMaxPmcs,
+                "sandbox" => Plugin.GroundZeroMaxPmcs,
+                "sandbox_high" => Plugin.GroundZeroHighMaxPmcs,
+                "shoreline" => Plugin.ShorelineMaxPmcs,
+                "tarkovstreets" => Plugin.StreetsMaxPmcs,
+                "woods" => Plugin.WoodsMaxPmcs,
+                "labyrinth" => Plugin.LabyrinthMaxPmcs,
+                _ => 0,
+            };
+        }
+
+        /// <summary>
+        /// Per-map total scav count for the raid (1-player baseline; scaled at spawn
+        /// time by PerPlayerScavMultiplier).
+        /// </summary>
+        public static int GetMaxScavsForMap(string mapName)
+        {
+            return mapName switch
+            {
+                "bigmap" => Plugin.CustomsMaxScavs,
+                "factory4_day" or "factory4_night" => Plugin.FactoryMaxScavs,
+                "interchange" => Plugin.InterchangeMaxScavs,
+                "laboratory" => Plugin.LabsMaxScavs,
+                "lighthouse" => Plugin.LighthouseMaxScavs,
+                "rezervbase" => Plugin.ReserveMaxScavs,
+                "sandbox" => Plugin.GroundZeroMaxScavs,
+                "sandbox_high" => Plugin.GroundZeroHighMaxScavs,
+                "shoreline" => Plugin.ShorelineMaxScavs,
+                "tarkovstreets" => Plugin.StreetsMaxScavs,
+                "woods" => Plugin.WoodsMaxScavs,
+                "labyrinth" => Plugin.LabyrinthMaxScavs,
+                _ => 0,
+            };
         }
         
         /// <summary>

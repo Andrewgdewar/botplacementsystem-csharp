@@ -42,7 +42,7 @@ namespace acidphantasm_botplacementsystem.Patches
 
                 // Runtime hard cap: skip this wave if it would push us past the per-map total.
                 // A group that would partially fit is rejected entirely so we don't overshoot.
-                var maxPmcs = GetMaxPmcsForMap(location);
+                var maxPmcs = Utility.GetMaxPmcsForMap(location);
                 if (maxPmcs > 0 && Utility.PmcsSpawnedThisRaid + escortPointCount > maxPmcs)
                 {
                     if (Plugin.DebugLogging)
@@ -205,7 +205,7 @@ namespace acidphantasm_botplacementsystem.Patches
             // alreadySpawned / maxPmcs -> fractional position, multiplied by list size.
             // If maxPmcs is unknown (0), fall back to starting at index 0 (acid's behaviour).
             var mapName = (Utility.CurrentLocation ?? "default").ToLower();
-            var maxPmcs = GetMaxPmcsForMap(mapName);
+            var maxPmcs = Utility.GetMaxPmcsForMap(mapName);
             var startIndex = 0;
             if (maxPmcs > 0)
             {
@@ -328,26 +328,6 @@ namespace acidphantasm_botplacementsystem.Patches
                 "woods" => Plugin.WoodsPmcSpawnDistanceCheck,
                 "labyrinth" => Plugin.LabyrinthPmcSpawnDistanceCheck,
                 _ => 50f,
-            };
-        }
-
-        private static int GetMaxPmcsForMap(string mapName)
-        {
-            return mapName switch
-            {
-                "bigmap" => Plugin.CustomsMaxPmcs,
-                "factory4_day" or "factory4_night" => Plugin.FactoryMaxPmcs,
-                "interchange" => Plugin.InterchangeMaxPmcs,
-                "laboratory" => Plugin.LabsMaxPmcs,
-                "lighthouse" => Plugin.LighthouseMaxPmcs,
-                "rezervbase" => Plugin.ReserveMaxPmcs,
-                "sandbox" => Plugin.GroundZeroMaxPmcs,
-                "sandbox_high" => Plugin.GroundZeroHighMaxPmcs,
-                "shoreline" => Plugin.ShorelineMaxPmcs,
-                "tarkovstreets" => Plugin.StreetsMaxPmcs,
-                "woods" => Plugin.WoodsMaxPmcs,
-                "labyrinth" => Plugin.LabyrinthMaxPmcs,
-                _ => 0,
             };
         }
     }

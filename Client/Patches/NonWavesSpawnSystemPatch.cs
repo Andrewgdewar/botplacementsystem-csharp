@@ -99,7 +99,7 @@ namespace acidphantasm_botplacementsystem.Patches
             // Per-map per-player total scav budget (configurable, defaults sized per map).
             // Scaled at spawn time by PerPlayerScavMultiplier.
             var mapNameForBudget = (Utility.CurrentLocation ?? "default").ToLower();
-            var perPlayerBudget = GetMaxScavsForMap(mapNameForBudget);
+            var perPlayerBudget = Utility.GetMaxScavsForMap(mapNameForBudget);
             // Fall back to vanilla per-player cap if no per-map config (eg unrecognized map).
             if (perPlayerBudget <= 0)
                 perPlayerBudget = ___botsController_0.BotLocationModifier.NonWaveSpawnBotsLimitPerPlayerPvE;
@@ -245,7 +245,7 @@ namespace acidphantasm_botplacementsystem.Patches
         {
             // Per-map cap (config). If unknown map, bail.
             var mapName = (Utility.CurrentLocation ?? "default").ToLower();
-            var maxPmcs = GetMaxPmcsForMap(mapName);
+            var maxPmcs = Utility.GetMaxPmcsForMap(mapName);
             if (maxPmcs <= 0) return;
 
             // Hard cap: never exceed per-map PMC total for this raid.
@@ -348,26 +348,6 @@ namespace acidphantasm_botplacementsystem.Patches
             if (roll < 90) return BotDifficulty.hard;
             return BotDifficulty.impossible;
         }
-
-        private static int GetMaxPmcsForMap(string mapName)
-        {
-            return mapName switch
-            {
-                "bigmap" => Plugin.CustomsMaxPmcs,
-                "factory4_day" or "factory4_night" => Plugin.FactoryMaxPmcs,
-                "interchange" => Plugin.InterchangeMaxPmcs,
-                "laboratory" => Plugin.LabsMaxPmcs,
-                "lighthouse" => Plugin.LighthouseMaxPmcs,
-                "rezervbase" => Plugin.ReserveMaxPmcs,
-                "sandbox" => Plugin.GroundZeroMaxPmcs,
-                "sandbox_high" => Plugin.GroundZeroHighMaxPmcs,
-                "shoreline" => Plugin.ShorelineMaxPmcs,
-                "tarkovstreets" => Plugin.StreetsMaxPmcs,
-                "woods" => Plugin.WoodsMaxPmcs,
-                "labyrinth" => Plugin.LabyrinthMaxPmcs,
-                _ => 0,
-            };
-        }
         
         private static string GetValidBotZone(WildSpawnType botType, int count, BotZone[] allZones, string location, BotsController _botsController)
         {
@@ -391,26 +371,6 @@ namespace acidphantasm_botplacementsystem.Patches
             }
 
             return "";
-        }
-
-        private static int GetMaxScavsForMap(string mapName)
-        {
-            return mapName switch
-            {
-                "bigmap" => Plugin.CustomsMaxScavs,
-                "factory4_day" or "factory4_night" => Plugin.FactoryMaxScavs,
-                "interchange" => Plugin.InterchangeMaxScavs,
-                "laboratory" => Plugin.LabsMaxScavs,
-                "lighthouse" => Plugin.LighthouseMaxScavs,
-                "rezervbase" => Plugin.ReserveMaxScavs,
-                "sandbox" => Plugin.GroundZeroMaxScavs,
-                "sandbox_high" => Plugin.GroundZeroHighMaxScavs,
-                "shoreline" => Plugin.ShorelineMaxScavs,
-                "tarkovstreets" => Plugin.StreetsMaxScavs,
-                "woods" => Plugin.WoodsMaxScavs,
-                "labyrinth" => Plugin.LabyrinthMaxScavs,
-                _ => 0,
-            };
         }
     }
 }

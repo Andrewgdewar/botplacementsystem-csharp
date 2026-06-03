@@ -93,7 +93,7 @@ namespace acidphantasm_botplacementsystem.Patches
                 : new List<ISpawnPoint>(source);
 
             var mapName = (Utility.CurrentLocation ?? "default").ToLower();
-            var maxPmcs = GetMaxPmcsForMapForPmcSelection(mapName);
+            var maxPmcs = Utility.GetMaxPmcsForMap(mapName);
             var startIndex = 0;
             if (maxPmcs > 0)
             {
@@ -120,26 +120,6 @@ namespace acidphantasm_botplacementsystem.Patches
                 return p;
             }
             return null;
-        }
-
-        private static int GetMaxPmcsForMapForPmcSelection(string mapName)
-        {
-            return mapName switch
-            {
-                "bigmap" => Plugin.CustomsMaxPmcs,
-                "factory4_day" or "factory4_night" => Plugin.FactoryMaxPmcs,
-                "interchange" => Plugin.InterchangeMaxPmcs,
-                "laboratory" => Plugin.LabsMaxPmcs,
-                "lighthouse" => Plugin.LighthouseMaxPmcs,
-                "rezervbase" => Plugin.ReserveMaxPmcs,
-                "sandbox" => Plugin.GroundZeroMaxPmcs,
-                "sandbox_high" => Plugin.GroundZeroHighMaxPmcs,
-                "shoreline" => Plugin.ShorelineMaxPmcs,
-                "tarkovstreets" => Plugin.StreetsMaxPmcs,
-                "woods" => Plugin.WoodsMaxPmcs,
-                "labyrinth" => Plugin.LabyrinthMaxPmcs,
-                _ => 0,
-            };
         }
 
         /// <summary>
