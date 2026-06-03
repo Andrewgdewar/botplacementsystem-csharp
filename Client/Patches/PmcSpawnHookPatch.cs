@@ -14,6 +14,8 @@ namespace acidphantasm_botplacementsystem.Patches
 {
     internal class PmcSpawnHookPatch : ModulePatch
     {
+        private const float GroupClusterRadius = 20f;
+
         protected override MethodBase GetTargetMethod()
         {
             return AccessTools.Method(typeof(BossSpawnerClass), nameof(BossSpawnerClass.method_2));
@@ -43,7 +45,8 @@ namespace acidphantasm_botplacementsystem.Patches
                 var maxPmcs = GetMaxPmcsForMap(location);
                 if (maxPmcs > 0 && Utility.PmcsSpawnedThisRaid + escortPointCount > maxPmcs)
                 {
-                    Logger.LogInfo($"[ABPS] PMC cap reached for {location}: {Utility.PmcsSpawnedThisRaid}/{maxPmcs}, rejecting wave of {escortPointCount}");
+                    if (Plugin.DebugLogging)
+                        Logger.LogInfo($"[ABPS] PMC cap reached for {location}: {Utility.PmcsSpawnedThisRaid}/{maxPmcs}, rejecting wave of {escortPointCount}");
                     __result = true;
                     return false;
                 }
@@ -218,10 +221,12 @@ namespace acidphantasm_botplacementsystem.Patches
             for (var i = startIndex; i < list.Count; i++)
             {
                 var checkPoint = list[i];
+                if (Utility.UsedSpawnPointIds.Contains(checkPoint.Id)) continue;
                 if (!IsValid(checkPoint, pmcPlayers, distance) || !IsValid(checkPoint, scavPlayers, scavDistance))
                     continue;
                 firstPoint = checkPoint;
                 validSpawnPoints.Add(checkPoint);
+                Utility.UsedSpawnPointIds.Add(checkPoint.Id);
                 break;
             }
 
@@ -231,22 +236,24 @@ namespace acidphantasm_botplacementsystem.Patches
                 for (var i = 0; i < startIndex; i++)
                 {
                     var checkPoint = list[i];
+                    if (Utility.UsedSpawnPointIds.Contains(checkPoint.Id)) continue;
                     if (!IsValid(checkPoint, pmcPlayers, distance) || !IsValid(checkPoint, scavPlayers, scavDistance))
                         continue;
                     firstPoint = checkPoint;
                     validSpawnPoints.Add(checkPoint);
+                    Utility.UsedSpawnPointIds.Add(checkPoint.Id);
                     break;
                 }
             }
 
             if (firstPoint == null) return validSpawnPoints;
 
-            // Cluster group members within 20m of the picked point.
+            // Cluster group members within GroupClusterRadius of the picked point.
             foreach (var checkPoint in list)
             {
                 if (validSpawnPoints.Count >= neededPoints) break;
                 if (checkPoint == firstPoint) continue;
-                if (Vector3.Distance(checkPoint.Position, firstPoint.Position) <= 20f)
+                if (Vector3.Distance(checkPoint.Position, firstPoint.Position) <= GroupClusterRadius)
                     validSpawnPoints.Add(checkPoint);
             }
 

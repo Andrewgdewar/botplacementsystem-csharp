@@ -42,6 +42,10 @@ namespace acidphantasm_botplacementsystem.Utils
         public static Vector3? InitialPlayerSpawnPosition = null;
         public static Vector3? CurrentPlayerPosition = null;
         public static Vector3? TravelDirection = null;
+        // Monotonic counter bumped every time CurrentPlayerPosition or TravelDirection
+        // is updated. Patches that cache sorted spawn lists key on this so they
+        // re-sort only when the position snapshot changes.
+        public static int PositionSnapshotVersion = 0;
         private static readonly List<Vector3> _positionHistory = new();
         private static float _lastPositionUpdateTime = 0f;
         private const float PositionUpdateInterval = 120f; // Sample position every 2 minutes
@@ -99,6 +103,7 @@ namespace acidphantasm_botplacementsystem.Utils
             InitialPlayerSpawnPosition = null;
             CurrentPlayerPosition = null;
             TravelDirection = null;
+            PositionSnapshotVersion = 0;
             _positionHistory.Clear();
             _lastPositionUpdateTime = 0f;
             
@@ -166,23 +171,59 @@ namespace acidphantasm_botplacementsystem.Utils
         /// Points ahead of the player's travel direction score lower (favored).
         /// Points behind score higher (deprioritized).
         /// Falls back to distance + noise when no travel direction is established.
+        /// Points inside a hotzone receive a score multiplier (HotzoneScoreMultiplier)
+        /// to favor them, restoring the hotzone preference that was lost when the
+        /// flat global search replaced the zone-gated search.
         /// </summary>
         public static float GetDirectionalScore(Vector3 spawnPoint, Vector3 playerPos, float noiseAmount)
         {
             var distance = Vector3.Distance(spawnPoint, playerPos);
             var noise = noiseAmount > 0f ? UnityEngine.Random.Range(0f, noiseAmount) : 0f;
-            
+            float score;
+
             if (!TravelDirection.HasValue || Plugin.DirectionalBias <= 0f)
-                return distance + noise;
-            
-            var offset = (spawnPoint - playerPos);
-            if (offset.sqrMagnitude < 1f) return noise; // On top of player
-            
-            var dot = Vector3.Dot(offset.normalized, TravelDirection.Value);
-            // dot: 1.0 = ahead, 0 = side, -1 = behind
-            var directionalMultiplier = 1.0f - (dot * Plugin.DirectionalBias);
-            
-            return distance * directionalMultiplier + noise;
+            {
+                score = distance + noise;
+            }
+            else
+            {
+                var offset = (spawnPoint - playerPos);
+                if (offset.sqrMagnitude < 1f)
+                {
+                    score = noise; // On top of player
+                }
+                else
+                {
+                    var dot = Vector3.Dot(offset.normalized, TravelDirection.Value);
+                    // dot: 1.0 = ahead, 0 = side, -1 = behind
+                    var directionalMultiplier = 1.0f - (dot * Plugin.DirectionalBias);
+                    score = distance * directionalMultiplier + noise;
+                }
+            }
+
+            if (Plugin.EnableHotzones && IsInHotzone(spawnPoint))
+                score *= Plugin.HotzoneScoreMultiplier;
+
+            return score;
+        }
+
+        private static bool IsInHotzone(Vector3 spawnPoint)
+        {
+            var mapName = CurrentLocation?.ToLower();
+            if (mapName == null || !MapHotSpots.TryGetValue(mapName, out var hotzoneNames))
+                return false;
+
+            foreach (var zone in CurrentMapZones)
+            {
+                if (zone == null) continue;
+                if (!hotzoneNames.Contains(zone.NameZone)) continue;
+                // Cheap check: spawn point is within the zone's bounding sphere center radius.
+                var zoneCenter = zone.CenterOfSpawnPoints;
+                var radius = zone.MaxPersons > 0 ? 80f : 50f;
+                if (Vector3.Distance(spawnPoint, zoneCenter) <= radius)
+                    return true;
+            }
+            return false;
         }
 
         public static bool IsPlayerHeadless(Player player)
@@ -217,26 +258,32 @@ namespace acidphantasm_botplacementsystem.Utils
         
         /// <summary>
         /// Periodically updates the reference position for spawn sorting based on
-        /// the current position of the first connected human player.
+        /// the AVERAGED position of all alive connected players. Using the centroid
+        /// instead of a single random player prevents TravelDirection from oscillating
+        /// when players move in opposite directions.
         /// Call this from a frequently-running patch (e.g. NonWavesSpawnSystem.Update).
         /// </summary>
         public static void TryUpdatePlayerPosition()
         {
             if (Time.time - _lastPositionUpdateTime < PositionUpdateInterval) return;
             if (CachedConnectedPlayers.Count == 0) return;
-            
-            var alivePlayers = CachedConnectedPlayers.Where(p => p != null && p.HealthController?.IsAlive == true).ToList();
-            if (alivePlayers.Count == 0) return;
-            
-            var player = alivePlayers[UnityEngine.Random.Range(0, alivePlayers.Count)];
 
-            Vector3 currentPos;
-            try { currentPos = player.Position; }
-            catch { return; }
+            var center = Vector3.zero;
+            var aliveCount = 0;
+            foreach (var p in CachedConnectedPlayers)
+            {
+                if (p == null || p.HealthController?.IsAlive != true) continue;
+                try { center += p.Position; aliveCount++; }
+                catch { /* skip players whose position throws */ }
+            }
+            if (aliveCount == 0) return;
+
+            var currentPos = center / aliveCount;
             
             // Update positions
             CurrentPlayerPosition = currentPos;
             _lastPositionUpdateTime = Time.time;
+            PositionSnapshotVersion++;
             
             // Add to position history
             _positionHistory.Add(currentPos);

@@ -13,6 +13,12 @@ namespace acidphantasm_botplacementsystem.Patches
 {
     internal class TryToSpawnInZonePatch : ModulePatch
     {
+        // Cached sorted scav spawn list. Re-sorts only when the player position
+        // snapshot version changes (every ~120s via Utility.TryUpdatePlayerPosition).
+        // Avoids an O(n log n) sort over all bot spawn points on every scav tick.
+        private static int _cachedScavSortVersion = -1;
+        private static List<ISpawnPoint> _cachedScavSorted = new();
+
         protected override MethodBase GetTargetMethod()
         {
             return AccessTools.Method(typeof(BotSpawner), nameof(BotSpawner.TryToSpawnInZoneAndDelay));
@@ -74,21 +80,29 @@ namespace acidphantasm_botplacementsystem.Patches
             var allPoints = Utility.AllBotSpawnPoints;
             if (allPoints.Count == 0) return null;
 
-            // Score and sort all points directionally
-            List<ISpawnPoint> sorted;
-            if (Utility.CurrentPlayerPosition.HasValue)
+            // Re-sort only when the player position snapshot changes. Between updates
+            // (typically 120s apart) the scoring is stable, so we reuse the cached order.
+            var currentVersion = Utility.PositionSnapshotVersion;
+            if (currentVersion != _cachedScavSortVersion || _cachedScavSorted.Count != allPoints.Count)
             {
-                var playerPos = Utility.CurrentPlayerPosition.Value;
-                sorted = allPoints
-                    .OrderBy(sp => Utility.GetDirectionalScore(sp.Position, playerPos, Plugin.ScavSpawnNoise))
-                    .ToList();
+                if (Utility.CurrentPlayerPosition.HasValue)
+                {
+                    var playerPos = Utility.CurrentPlayerPosition.Value;
+                    _cachedScavSorted = allPoints
+                        .OrderBy(sp => Utility.GetDirectionalScore(sp.Position, playerPos, Plugin.ScavSpawnNoise))
+                        .ToList();
+                }
+                else
+                {
+                    _cachedScavSorted = allPoints
+                        .OrderBy(_ => GClass856.Random(0f, 1f))
+                        .ToList();
+                }
+                _cachedScavSortVersion = currentVersion;
             }
-            else
-            {
-                sorted = allPoints
-                    .OrderBy(_ => GClass856.Random(0f, 1f))
-                    .ToList();
-            }
+
+            // Work on a copy so the loose shuffle does not mutate the cached order.
+            var sorted = new List<ISpawnPoint>(_cachedScavSorted);
 
             // Loosely shuffle the ahead portion for variety
             Utility.LooselyShuffle(sorted, Plugin.ShufflePercent, Plugin.ShuffleStep);
@@ -100,9 +114,12 @@ namespace acidphantasm_botplacementsystem.Patches
             for (var i = startIndex; i < sorted.Count; i++)
             {
                 var point = sorted[i];
+                if (Utility.UsedSpawnPointIds.Contains(point.Id))
+                    continue;
                 if (!IsValid(point, pmcList, pmcDistance) || !IsValid(point, scavList, scavDistance))
                     continue;
 
+                Utility.UsedSpawnPointIds.Add(point.Id);
                 return point;
             }
 

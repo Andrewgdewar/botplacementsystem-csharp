@@ -102,6 +102,7 @@ namespace acidphantasm_botplacementsystem
         private static ConfigEntry<float> _pmcSkipClosestPercent;
         private static ConfigEntry<float> _scavSkipClosestPercent;
         private static ConfigEntry<float> _perPlayerScavMultiplier;
+        private static ConfigEntry<float> _hotzoneScoreMultiplier;
         private static ConfigEntry<float> _scavScheduleStartPercent;
         private static ConfigEntry<float> _scavScheduleMidTimePercent;
         private static ConfigEntry<float> _scavScheduleMidBudgetPercent;
@@ -816,6 +817,16 @@ namespace acidphantasm_botplacementsystem
             Plugin.ScavSkipClosestPercent = _scavSkipClosestPercent.Value;
             _scavSkipClosestPercent.SettingChanged += ABPS_SettingChanged;
 
+            _hotzoneScoreMultiplier = config.Bind(
+                GeneralConfig,
+                "Hotzone Score Multiplier",
+                0.7f,
+                new ConfigDescription("Score multiplier applied to spawn points inside a map hotzone. < 1.0 favors hotzones (lower score wins). 1.0 disables the bias.\nRequires 'Enable Hotzones' to be on.",
+                    new AcceptableValueRange<float>(0.1f, 1.5f),
+                    new ConfigurationManagerAttributes { Order = _loadOrder-- }));
+            Plugin.HotzoneScoreMultiplier = _hotzoneScoreMultiplier.Value;
+            _hotzoneScoreMultiplier.SettingChanged += ABPS_SettingChanged;
+
             _scavScheduleStartPercent = config.Bind(
                 GeneralConfig,
                 "Scav Schedule Start Budget Pct",
@@ -944,6 +955,7 @@ namespace acidphantasm_botplacementsystem
             Plugin.PmcSkipClosestPercent = _pmcSkipClosestPercent.Value;
             Plugin.ScavSkipClosestPercent = _scavSkipClosestPercent.Value;
             Plugin.PerPlayerScavMultiplier = _perPlayerScavMultiplier.Value;
+            Plugin.HotzoneScoreMultiplier = _hotzoneScoreMultiplier.Value;
             Plugin.ScavScheduleStartPercent = _scavScheduleStartPercent.Value;
             Plugin.ScavScheduleMidTimePercent = _scavScheduleMidTimePercent.Value;
             Plugin.ScavScheduleMidBudgetPercent = _scavScheduleMidBudgetPercent.Value;

@@ -56,7 +56,12 @@ public class PmcSpawns(
         // spawn out by 3x. Hard stop at taperEndTime regardless.
         var raidSeconds = escapeTimeLimit * 60;
         ModConfig.Config.PmcConfig.Waves.MaxTotalPmcs.TryGetValue(location, out var maxTotalPmcs);
-        var startingPmcMax = ModConfig.Config.PmcConfig.StartingPMCs.MapLimits[location].Max;
+        if (!ModConfig.Config.PmcConfig.StartingPMCs.MapLimits.TryGetValue(location, out var startingRange))
+        {
+            logger.Info($"[ABPS] {location}: unknown map for StartingPMCs.MapLimits, skipping wave schedule");
+            return pmcWaveSpawnInfo;
+        }
+        var startingPmcMax = startingRange.Max;
         var waveBudget = Math.Max(0, maxTotalPmcs - startingPmcMax);
         var taperEndTime = raidSeconds * ModConfig.Config.PmcConfig.Waves.TaperEndPercent;
         var activeWindow = taperEndTime - firstWaveTimer;
@@ -89,7 +94,7 @@ public class PmcSpawns(
             }
 
             bossDefaultData[0].BossEscortAmount = groupSize.ToString();
-            bossDefaultData[0].Time = currentTime + randomUtil.GetInt(-jitter, jitter);
+            bossDefaultData[0].Time = Math.Max(0, currentTime + randomUtil.GetInt(-jitter, jitter));
             bossDefaultData[0].BossDifficulty = weightedRandomHelper.GetWeightedValue(difficultyWeights);
             bossDefaultData[0].BossEscortDifficulty = weightedRandomHelper.GetWeightedValue(difficultyWeights);
             bossDefaultData[0].BossZone = "";
