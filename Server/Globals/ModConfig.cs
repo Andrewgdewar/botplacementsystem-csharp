@@ -24,7 +24,7 @@ public class ModConfig : IOnLoad
     public static PmcDefaults? PmcDefaults { get; private set; }
     public static ScavDefaults? ScavDefaults { get; private set; }
     public static HostilityDefaults? HostilityDefaults { get; private set; }
-    public static AbpsConfig Config {get; private set;} = null!;
+    public static AbpsConfig Config {get; internal set;} = null!;
     public static AbpsConfig OriginalConfig {get; private set;} = null!;
     
     private static int _isActivelyProcessingFlag = 0;
@@ -48,6 +48,8 @@ public class ModConfig : IOnLoad
     {
         Config = await _jsonUtil.DeserializeFromFileAsync<AbpsConfig>(_modPath + "/config.json") ?? throw new ArgumentNullException();
         OriginalConfig = await _jsonUtil.DeserializeFromFileAsync<AbpsConfig>(_modPath + "/config.json") ?? throw new ArgumentNullException();
+        Config.PresetConfig ??= new PresetConfig();
+        OriginalConfig.PresetConfig ??= new PresetConfig();
         MapZoneDefaults = await _jsonUtil.DeserializeFromFileAsync<MapZoneDefaults>(_modPath + "/Defaults/MapZones.json") ?? throw new ArgumentNullException();
         BossWaveDefaults = await _jsonUtil.DeserializeFromFileAsync<BossWaveDefaults>(_modPath + "/Defaults/Bosses.json") ?? throw new ArgumentNullException();
         PmcDefaults = await _jsonUtil.DeserializeFromFileAsync<PmcDefaults>(_modPath + "/Defaults/PMCs.json") ?? throw new ArgumentNullException();
@@ -68,6 +70,7 @@ public class ModConfig : IOnLoad
             await Task.WhenAll(configTask);
 
             Config = configTask.Result ?? throw new ArgumentNullException(nameof(Config));
+            Config.PresetConfig ??= new PresetConfig();
             OriginalConfig = DeepClone(Config);
 
             await Task.Run(() => _mapSpawns.ConfigureInitialData());

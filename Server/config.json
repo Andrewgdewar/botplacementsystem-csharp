@@ -824,5 +824,9 @@
     "allowUpdateChecks": false,
     "requireAuthCode": false,
     "authCode": "Kitten Mittons"
+  },
+  "presetConfig": {
+    "enable": false,
+    "forcedPreset": "random"
   }
 }

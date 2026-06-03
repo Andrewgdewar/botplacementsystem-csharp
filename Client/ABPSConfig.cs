@@ -7,6 +7,9 @@ namespace acidphantasm_botplacementsystem
     {
         private static int _loadOrder = 200;
         
+        private const string PresetSettings = "0. Preset Settings";
+        private static ConfigEntry<bool> _showPresetOnRaidStart;
+        
         private const string DespawnConfig = "1. Despawn Settings";
         private static ConfigEntry<bool> _despawnFurthest;
         private static ConfigEntry<bool> _despawnPmcs;
@@ -131,6 +134,17 @@ namespace acidphantasm_botplacementsystem
 
         public static void InitAbpsConfig(ConfigFile config)
         {
+            // Preset Settings
+            _showPresetOnRaidStart = config.Bind(
+                PresetSettings,
+                "Announce Preset On Raid Start",
+                true,
+                new ConfigDescription("Display the active ABPS preset as a notification when a raid starts. Requires the preset system to be enabled in the server config.",
+                    null,
+                    new ConfigurationManagerAttributes { Order = _loadOrder-- }));
+            Plugin.ShowPresetOnRaidStart = _showPresetOnRaidStart.Value;
+            _showPresetOnRaidStart.SettingChanged += ABPS_SettingChanged;
+            
             // Despawn Settings
             _despawnFurthest = config.Bind(
                 DespawnConfig,
@@ -858,6 +872,7 @@ namespace acidphantasm_botplacementsystem
         }
         private static void ABPS_SettingChanged(object sender, EventArgs e)
         {
+            Plugin.ShowPresetOnRaidStart = _showPresetOnRaidStart.Value;
             Plugin.DespawnFurthest = _despawnFurthest.Value;
             Plugin.DespawnDistance = _despawnDistance.Value;
             
