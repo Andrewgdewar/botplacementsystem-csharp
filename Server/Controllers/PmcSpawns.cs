@@ -45,82 +45,64 @@ public class PmcSpawns(
         var pmcWaveSpawnInfo = new List<BossLocationSpawn>();
         var ignoreMaxBotCaps = ModConfig.Config.PmcConfig.Waves.IgnoreMaxBotCaps;
         var difficultyWeights = ModConfig.Config.PmcDifficulty;
-        var waveMaxPmcCount = location.Contains("factory") || location.Contains("labyrinth") ? Math.Min(2, ModConfig.Config.PmcConfig.Waves.MaxBotsPerWave - 2) : ModConfig.Config.PmcConfig.Waves.MaxBotsPerWave;
-        var waveGroupLimit = ModConfig.Config.PmcConfig.Waves.MaxGroupCount;
         var waveGroupSize = ModConfig.Config.PmcConfig.Waves.MaxGroupSize;
         var waveGroupChance = ModConfig.Config.PmcConfig.Waves.GroupChance;
         var firstWaveTimer = ModConfig.Config.PmcConfig.Waves.DelayBeforeFirstWave;
-        var waveTimer = ModConfig.Config.PmcConfig.Waves.SecondsBetweenWaves;
-        var spawnStaggerMin = 5;
-        var spawnStaggerMax = 15;
 
-        // Hard cap total PMCs (starting + waves) at MaxTotalPmcs[location].
-        // Wave budget = max - starting cap. Tapers from 100% wave size at taperStartPercent
-        // down to 0% at taperEndPercent of total raid time. Hard stop at taperEndPercent.
+        // MOAR-style even-spread schedule with group bias.
+        // waveBudget = total PMC slots for waves (max total - starting cap reserved).
+        // averageTime = active window / budget. Each scheduled entry advances time by
+        // (1 + groupSize) * averageTime so a 3-man group naturally pushes the next
+        // spawn out by 3x. Hard stop at taperEndTime regardless.
         var raidSeconds = escapeTimeLimit * 60;
         ModConfig.Config.PmcConfig.Waves.MaxTotalPmcs.TryGetValue(location, out var maxTotalPmcs);
         var startingPmcMax = ModConfig.Config.PmcConfig.StartingPMCs.MapLimits[location].Max;
         var waveBudget = Math.Max(0, maxTotalPmcs - startingPmcMax);
-        var taperStartTime = raidSeconds * ModConfig.Config.PmcConfig.Waves.TaperStartPercent;
         var taperEndTime = raidSeconds * ModConfig.Config.PmcConfig.Waves.TaperEndPercent;
+        var activeWindow = taperEndTime - firstWaveTimer;
 
-        var totalSpawned = 0;
-        var currentWaveTime = (double)firstWaveTimer;
-
-        while (currentWaveTime < taperEndTime && totalSpawned < waveBudget)
+        if (waveBudget <= 0 || activeWindow <= 0)
         {
-            double sizeFraction;
-            if (currentWaveTime < taperStartTime)
-            {
-                sizeFraction = 1.0;
-            }
-            else
-            {
-                var taperRange = taperEndTime - taperStartTime;
-                sizeFraction = taperRange > 0 ? Math.Max(0, 1.0 - (currentWaveTime - taperStartTime) / taperRange) : 0;
-            }
-
-            var thisWaveMax = Math.Min((int)Math.Ceiling(waveMaxPmcCount * sizeFraction), waveBudget - totalSpawned);
-            if (thisWaveMax <= 0) break;
-
-            var currentPmcCount = 0;
-            var groupCount = 0;
-            var currentSpawnOffset = 0d;
-
-            while (currentPmcCount < thisWaveMax)
-            {
-                var canBeAGroup = groupCount < waveGroupLimit;
-                var groupSize = 0;
-                var remainingSpots = thisWaveMax - currentPmcCount;
-                var isAGroup = remainingSpots > 1 && randomUtil.GetChance100(waveGroupChance);
-                if (isAGroup && canBeAGroup)
-                {
-                    groupSize = Math.Min(remainingSpots - 1, randomUtil.GetInt(1, waveGroupSize));
-                    groupCount++;
-                }
-
-                var pmcType = randomUtil.GetChance100(ModConfig.Config.PmcType.UsecChance) ? "pmcUSEC" : "pmcBEAR";
-                var bossDefaultData = cloner.Clone(GetDefaultValuesForBoss(pmcType));
-
-                if (bossDefaultData is null) continue;
-
-                bossDefaultData[0].BossEscortAmount = groupSize.ToString();
-                bossDefaultData[0].Time = currentWaveTime + currentSpawnOffset;
-                bossDefaultData[0].BossDifficulty = weightedRandomHelper.GetWeightedValue(difficultyWeights);
-                bossDefaultData[0].BossEscortDifficulty = weightedRandomHelper.GetWeightedValue(difficultyWeights);
-                bossDefaultData[0].BossZone = "";
-                bossDefaultData[0].IgnoreMaxBots = ignoreMaxBotCaps;
-                currentPmcCount += groupSize + 1;
-                totalSpawned += groupSize + 1;
-                pmcWaveSpawnInfo.Add(bossDefaultData[0]);
-
-                currentSpawnOffset += randomUtil.GetInt(spawnStaggerMin, spawnStaggerMax);
-            }
-
-            currentWaveTime += waveTimer;
+            logger.Info($"[ABPS] {location}: no PMC waves (budget {waveBudget}, window {activeWindow:0}s)");
+            return pmcWaveSpawnInfo;
         }
 
-        logger.Info($"[ABPS] {location}: scheduled {totalSpawned} PMC waves (budget {waveBudget}, max {maxTotalPmcs}, taper {taperStartTime:0}s-{taperEndTime:0}s)");
+        var averageTime = activeWindow / waveBudget;
+        var slotsRemaining = waveBudget;
+        var currentTime = (double)firstWaveTimer;
+        var totalSpawned = 0;
+        const int jitter = 15;
+
+        while (slotsRemaining > 0 && currentTime < taperEndTime)
+        {
+            // Roll for a group, capped by remaining slots and configured max.
+            var allowGroup = waveGroupSize > 1 && slotsRemaining > 1 && randomUtil.GetChance100(waveGroupChance);
+            var groupSize = allowGroup ? Math.Min(slotsRemaining - 1, randomUtil.GetInt(1, waveGroupSize)) : 0;
+
+            var pmcType = randomUtil.GetChance100(ModConfig.Config.PmcType.UsecChance) ? "pmcUSEC" : "pmcBEAR";
+            var bossDefaultData = cloner.Clone(GetDefaultValuesForBoss(pmcType));
+            if (bossDefaultData is null)
+            {
+                slotsRemaining -= 1 + groupSize;
+                currentTime += (1 + groupSize) * averageTime;
+                continue;
+            }
+
+            bossDefaultData[0].BossEscortAmount = groupSize.ToString();
+            bossDefaultData[0].Time = currentTime + randomUtil.GetInt(-jitter, jitter);
+            bossDefaultData[0].BossDifficulty = weightedRandomHelper.GetWeightedValue(difficultyWeights);
+            bossDefaultData[0].BossEscortDifficulty = weightedRandomHelper.GetWeightedValue(difficultyWeights);
+            bossDefaultData[0].BossZone = "";
+            bossDefaultData[0].IgnoreMaxBots = ignoreMaxBotCaps;
+            pmcWaveSpawnInfo.Add(bossDefaultData[0]);
+
+            var spawnSize = 1 + groupSize;
+            totalSpawned += spawnSize;
+            slotsRemaining -= spawnSize;
+            currentTime += spawnSize * averageTime;
+        }
+
+        logger.Info($"[ABPS] {location}: scheduled {totalSpawned} PMCs across {pmcWaveSpawnInfo.Count} waves (budget {waveBudget}, max {maxTotalPmcs}, window {firstWaveTimer:0}s-{taperEndTime:0}s, avg {averageTime:0.0}s)");
         return pmcWaveSpawnInfo;
     }
 

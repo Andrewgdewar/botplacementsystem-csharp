@@ -36,6 +36,7 @@ namespace acidphantasm_botplacementsystem.Utils
         public static List<Player> CachedBosses = new();
         public static List<Player> CachedConnectedPlayers = new();
         public static double BotsSpawnedPerPlayer = 0.0d;
+        public static int PmcsSpawnedThisRaid = 0;
         
         // Player spawn position for distance-sorted spawning
         public static Vector3? InitialPlayerSpawnPosition = null;
@@ -106,6 +107,7 @@ namespace acidphantasm_botplacementsystem.Utils
             AllBotSpawnPoints.Clear();
             
             BotsSpawnedPerPlayer = 0.0;
+            PmcsSpawnedThisRaid = 0;
             
             // Recache spawn points now
             _allSpawnPoints = SpawnPointManagerClass.CreateFromScene().ToList();

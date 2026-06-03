@@ -25,6 +25,19 @@ namespace acidphantasm_botplacementsystem
         private static ConfigEntry<int> _streetsMapLimit;
         private static ConfigEntry<int> _woodsMapLimit;
         private static ConfigEntry<int> _labyrinthMapLimit;
+
+        private static ConfigEntry<int> _customsMaxPmcs;
+        private static ConfigEntry<int> _factoryMaxPmcs;
+        private static ConfigEntry<int> _interchangeMaxPmcs;
+        private static ConfigEntry<int> _labsMaxPmcs;
+        private static ConfigEntry<int> _lighthouseMaxPmcs;
+        private static ConfigEntry<int> _reserveMaxPmcs;
+        private static ConfigEntry<int> _groundZeroMaxPmcs;
+        private static ConfigEntry<int> _groundZeroHighMaxPmcs;
+        private static ConfigEntry<int> _shorelineMaxPmcs;
+        private static ConfigEntry<int> _streetsMaxPmcs;
+        private static ConfigEntry<int> _woodsMaxPmcs;
+        private static ConfigEntry<int> _labyrinthMaxPmcs;
         
         private const string BossConfig = "3. Boss Settings";
         private static ConfigEntry<bool> _regressiveChances;
@@ -74,6 +87,17 @@ namespace acidphantasm_botplacementsystem
         private static ConfigEntry<float> _scavSpawnNoise;
         private static ConfigEntry<float> _pmcSpawnNoise;
         private static ConfigEntry<float> _pmcSkipClosestPercent;
+
+        private static ConfigEntry<int> BindMaxPmc(ConfigFile config, string label, int defaultValue, string description)
+        {
+            return config.Bind(
+                GeneralConfig,
+                label,
+                defaultValue,
+                new ConfigDescription(description,
+                    new AcceptableValueRange<int>(0, 50),
+                    new ConfigurationManagerAttributes { Order = _loadOrder-- }));
+        }
 
         public static void InitAbpsConfig(ConfigFile config)
         {
@@ -228,6 +252,58 @@ namespace acidphantasm_botplacementsystem
                 new ConfigurationManagerAttributes { Order = _loadOrder-- }));
             Plugin.LabyrinthMapLimit = _labyrinthMapLimit.Value;
             _labyrinthMapLimit.SettingChanged += ABPS_SettingChanged;
+
+            // Per-map runtime hard caps for PMC count (server schedules waves up to this number;
+            // client enforces it at runtime as a safety net so we never exceed it).
+            const string MaxPmcsDesc = "Hard cap on total PMC count (starting + waves) per raid.\nMust match the server config maxTotalPmcs value for this map.\nChanges do not take effect until next raid.";
+
+            _customsMaxPmcs = BindMaxPmc(config, "Max PMCs - Customs", 12, MaxPmcsDesc);
+            Plugin.CustomsMaxPmcs = _customsMaxPmcs.Value;
+            _customsMaxPmcs.SettingChanged += ABPS_SettingChanged;
+
+            _factoryMaxPmcs = BindMaxPmc(config, "Max PMCs - Factory", 5, MaxPmcsDesc);
+            Plugin.FactoryMaxPmcs = _factoryMaxPmcs.Value;
+            _factoryMaxPmcs.SettingChanged += ABPS_SettingChanged;
+
+            _interchangeMaxPmcs = BindMaxPmc(config, "Max PMCs - Interchange", 12, MaxPmcsDesc);
+            Plugin.InterchangeMaxPmcs = _interchangeMaxPmcs.Value;
+            _interchangeMaxPmcs.SettingChanged += ABPS_SettingChanged;
+
+            _labsMaxPmcs = BindMaxPmc(config, "Max PMCs - Labs", 10, MaxPmcsDesc);
+            Plugin.LabsMaxPmcs = _labsMaxPmcs.Value;
+            _labsMaxPmcs.SettingChanged += ABPS_SettingChanged;
+
+            _lighthouseMaxPmcs = BindMaxPmc(config, "Max PMCs - Lighthouse", 12, MaxPmcsDesc);
+            Plugin.LighthouseMaxPmcs = _lighthouseMaxPmcs.Value;
+            _lighthouseMaxPmcs.SettingChanged += ABPS_SettingChanged;
+
+            _reserveMaxPmcs = BindMaxPmc(config, "Max PMCs - Reserve", 12, MaxPmcsDesc);
+            Plugin.ReserveMaxPmcs = _reserveMaxPmcs.Value;
+            _reserveMaxPmcs.SettingChanged += ABPS_SettingChanged;
+
+            _groundZeroMaxPmcs = BindMaxPmc(config, "Max PMCs - Ground Zero", 7, MaxPmcsDesc);
+            Plugin.GroundZeroMaxPmcs = _groundZeroMaxPmcs.Value;
+            _groundZeroMaxPmcs.SettingChanged += ABPS_SettingChanged;
+
+            _groundZeroHighMaxPmcs = BindMaxPmc(config, "Max PMCs - Ground Zero High", 9, MaxPmcsDesc);
+            Plugin.GroundZeroHighMaxPmcs = _groundZeroHighMaxPmcs.Value;
+            _groundZeroHighMaxPmcs.SettingChanged += ABPS_SettingChanged;
+
+            _shorelineMaxPmcs = BindMaxPmc(config, "Max PMCs - Shoreline", 12, MaxPmcsDesc);
+            Plugin.ShorelineMaxPmcs = _shorelineMaxPmcs.Value;
+            _shorelineMaxPmcs.SettingChanged += ABPS_SettingChanged;
+
+            _streetsMaxPmcs = BindMaxPmc(config, "Max PMCs - Streets", 12, MaxPmcsDesc);
+            Plugin.StreetsMaxPmcs = _streetsMaxPmcs.Value;
+            _streetsMaxPmcs.SettingChanged += ABPS_SettingChanged;
+
+            _woodsMaxPmcs = BindMaxPmc(config, "Max PMCs - Woods", 10, MaxPmcsDesc);
+            Plugin.WoodsMaxPmcs = _woodsMaxPmcs.Value;
+            _woodsMaxPmcs.SettingChanged += ABPS_SettingChanged;
+
+            _labyrinthMaxPmcs = BindMaxPmc(config, "Max PMCs - Labyrinth", 8, MaxPmcsDesc);
+            Plugin.LabyrinthMaxPmcs = _labyrinthMaxPmcs.Value;
+            _labyrinthMaxPmcs.SettingChanged += ABPS_SettingChanged;
 
             
             // Boss stuff
@@ -655,6 +731,19 @@ namespace acidphantasm_botplacementsystem
             Plugin.StreetsMapLimit = _streetsMapLimit.Value;
             Plugin.WoodsMapLimit = _woodsMapLimit.Value;
             Plugin.LabyrinthMapLimit = _labyrinthMapLimit.Value;
+
+            Plugin.CustomsMaxPmcs = _customsMaxPmcs.Value;
+            Plugin.FactoryMaxPmcs = _factoryMaxPmcs.Value;
+            Plugin.InterchangeMaxPmcs = _interchangeMaxPmcs.Value;
+            Plugin.LabsMaxPmcs = _labsMaxPmcs.Value;
+            Plugin.LighthouseMaxPmcs = _lighthouseMaxPmcs.Value;
+            Plugin.ReserveMaxPmcs = _reserveMaxPmcs.Value;
+            Plugin.GroundZeroMaxPmcs = _groundZeroMaxPmcs.Value;
+            Plugin.GroundZeroHighMaxPmcs = _groundZeroHighMaxPmcs.Value;
+            Plugin.ShorelineMaxPmcs = _shorelineMaxPmcs.Value;
+            Plugin.StreetsMaxPmcs = _streetsMaxPmcs.Value;
+            Plugin.WoodsMaxPmcs = _woodsMaxPmcs.Value;
+            Plugin.LabyrinthMaxPmcs = _labyrinthMaxPmcs.Value;
 
             Plugin.RegressiveChances = _regressiveChances.Value;
             Plugin.ProgressiveChances = _progressiveChances.Value;

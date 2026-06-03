@@ -37,6 +37,17 @@ namespace acidphantasm_botplacementsystem.Patches
                 var escortPointCount = 1 + wave.EscortCount;
                 var location = Utility.CurrentLocation ?? "default";
                 location = location.ToLower();
+
+                // Runtime hard cap: skip this wave if it would push us past the per-map total.
+                // A group that would partially fit is rejected entirely so we don't overshoot.
+                var maxPmcs = GetMaxPmcsForMap(location);
+                if (maxPmcs > 0 && Utility.PmcsSpawnedThisRaid + escortPointCount > maxPmcs)
+                {
+                    Logger.LogInfo($"[ABPS] PMC cap reached for {location}: {Utility.PmcsSpawnedThisRaid}/{maxPmcs}, rejecting wave of {escortPointCount}");
+                    __result = false;
+                    return false;
+                }
+
                 var distance = GetDistanceForMap(location);
                 var isSmallMap = location.Contains("factory4") || location.Contains("laboratory") ||
                                  location.Contains("labyrinth");
@@ -93,6 +104,10 @@ namespace acidphantasm_botplacementsystem.Patches
 
                         PmcGroupSpawner.StartSpawnPmcGroup(creationData, wave, spawnParams, followersCount, botZone,
                             validSpawnLocations).HandleExceptions();
+
+                        Utility.PmcsSpawnedThisRaid += escortPointCount;
+                        if (Plugin.DebugLogging)
+                            Logger.LogInfo($"[ABPS] PMC spawned: {Utility.PmcsSpawnedThisRaid}/{maxPmcs} on {location}");
 
                         __result = true;
                         return false;
@@ -285,6 +300,26 @@ namespace acidphantasm_botplacementsystem.Patches
                 "woods" => Plugin.WoodsPmcSpawnDistanceCheck,
                 "labyrinth" => Plugin.LabyrinthPmcSpawnDistanceCheck,
                 _ => 50f,
+            };
+        }
+
+        private static int GetMaxPmcsForMap(string mapName)
+        {
+            return mapName switch
+            {
+                "bigmap" => Plugin.CustomsMaxPmcs,
+                "factory4_day" or "factory4_night" => Plugin.FactoryMaxPmcs,
+                "interchange" => Plugin.InterchangeMaxPmcs,
+                "laboratory" => Plugin.LabsMaxPmcs,
+                "lighthouse" => Plugin.LighthouseMaxPmcs,
+                "rezervbase" => Plugin.ReserveMaxPmcs,
+                "sandbox" => Plugin.GroundZeroMaxPmcs,
+                "sandbox_high" => Plugin.GroundZeroHighMaxPmcs,
+                "shoreline" => Plugin.ShorelineMaxPmcs,
+                "tarkovstreets" => Plugin.StreetsMaxPmcs,
+                "woods" => Plugin.WoodsMaxPmcs,
+                "labyrinth" => Plugin.LabyrinthMaxPmcs,
+                _ => 0,
             };
         }
     }
