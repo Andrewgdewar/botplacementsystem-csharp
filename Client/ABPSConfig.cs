@@ -98,6 +98,7 @@ namespace acidphantasm_botplacementsystem
         private static ConfigEntry<float> _shufflePercent;
         private static ConfigEntry<int> _shuffleStep;
         private static ConfigEntry<float> _pickBiasPower;
+        private static ConfigEntry<float> _pickBiasOffset;
         private static ConfigEntry<float> _scavSpawnNoise;
         private static ConfigEntry<float> _pmcSpawnNoise;
         private static ConfigEntry<float> _pmcSkipClosestPercent;
@@ -782,6 +783,16 @@ namespace acidphantasm_botplacementsystem
             Plugin.PickBiasPower = _pickBiasPower.Value;
             _pickBiasPower.SettingChanged += ABPS_SettingChanged;
 
+            _pickBiasOffset = config.Bind(
+                GeneralConfig,
+                "Pick Bias Offset",
+                1f,
+                new ConfigDescription("Flattens the top of the scav weighted pick curve. 1 = sharp peak at closest (default). 5 = first 5 candidates similarly likely. 10 = first 10 similarly likely. Higher offset = less front-bias, more spread amongst near-by candidates.",
+                    new AcceptableValueRange<float>(1f, 20f),
+                    new ConfigurationManagerAttributes { Order = _loadOrder-- }));
+            Plugin.PickBiasOffset = _pickBiasOffset.Value;
+            _pickBiasOffset.SettingChanged += ABPS_SettingChanged;
+
             _scavSpawnNoise = config.Bind(
                 GeneralConfig,
                 "Scav Spawn Noise",
@@ -1008,6 +1019,7 @@ namespace acidphantasm_botplacementsystem
             Plugin.ShufflePercent = _shufflePercent.Value;
             Plugin.ShuffleStep = _shuffleStep.Value;
             Plugin.PickBiasPower = _pickBiasPower.Value;
+            Plugin.PickBiasOffset = _pickBiasOffset.Value;
             Plugin.ScavSpawnNoise = _scavSpawnNoise.Value;
             Plugin.PmcSpawnNoise = _pmcSpawnNoise.Value;
             Plugin.PmcSkipClosestPercent = _pmcSkipClosestPercent.Value;

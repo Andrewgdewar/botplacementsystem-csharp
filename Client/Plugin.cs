@@ -99,6 +99,7 @@ namespace acidphantasm_botplacementsystem
         public static float ShufflePercent;
         public static int ShuffleStep;
         public static float PickBiasPower;
+        public static float PickBiasOffset;
         public static float ScavSpawnNoise;
         public static float PmcSpawnNoise;
         public static float PmcSkipClosestPercent;

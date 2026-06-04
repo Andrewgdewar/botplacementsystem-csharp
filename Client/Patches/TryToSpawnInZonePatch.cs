@@ -23,6 +23,7 @@ namespace acidphantasm_botplacementsystem.Patches
         private static double[] _cachedCumulativeWeights = Array.Empty<double>();
         private static int _cachedPoolSize = 0;
         private static float _cachedBiasPower = -1f;
+        private static float _cachedBiasOffset = -1f;
         private const int PickPoolMax = 80;
 
         protected override MethodBase GetTargetMethod()
@@ -121,18 +122,25 @@ namespace acidphantasm_botplacementsystem.Patches
 
             // Rebuild cumulative weight table if sort changed or bias power changed.
             var biasPower = Plugin.PickBiasPower;
-            if (poolSize != _cachedPoolSize || Math.Abs(biasPower - _cachedBiasPower) > 0.0001f)
+            var biasOffset = Plugin.PickBiasOffset;
+            if (poolSize != _cachedPoolSize
+                || Math.Abs(biasPower - _cachedBiasPower) > 0.0001f
+                || Math.Abs(biasOffset - _cachedBiasOffset) > 0.0001f)
             {
                 if (_cachedCumulativeWeights.Length < poolSize)
                     _cachedCumulativeWeights = new double[poolSize];
                 double acc = 0;
                 for (var i = 0; i < poolSize; i++)
                 {
-                    acc += 1.0 / Math.Pow(i + 1, biasPower);
+                    // weight = 1 / (i + offset)^k. Offset >= 1 flattens the top of the
+                    // curve: with offset=1 index 0 is heavily preferred, with offset=8
+                    // the first 8 candidates are within ~2x of each other.
+                    acc += 1.0 / Math.Pow(i + biasOffset, biasPower);
                     _cachedCumulativeWeights[i] = acc;
                 }
                 _cachedPoolSize = poolSize;
                 _cachedBiasPower = biasPower;
+                _cachedBiasOffset = biasOffset;
             }
 
             // Try up to N weighted picks. Each pick rejects on UsedSpawnPointIds /
