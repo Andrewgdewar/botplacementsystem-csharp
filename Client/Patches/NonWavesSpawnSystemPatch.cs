@@ -55,9 +55,9 @@ namespace acidphantasm_botplacementsystem.Patches
             if (___abstractGame_0.PastTime < (float)___location_0.BotStart || ___abstractGame_0.PastTime > (float)___location_0.BotStop)
                 return false;
 
-            // PMC tick runs independently of the scav active/inactive cycle so PMC pacing
-            // isn't affected by scav quiet windows. Has its own attempt interval + gates.
-            TryToSpawnPmc(___botsController_0, ___abstractGame_0, ___location_0);
+            // Cache the raid bot window for other patches that don't get this struct.
+            Utility.RaidBotStart = (float)___location_0.BotStart;
+            Utility.RaidBotStop = (float)___location_0.BotStop;
 
             if (nextWindowToggleTime.Equals(null) || nextWindowToggleTime <= ___abstractGame_0.PastTime)
             {
@@ -239,147 +239,6 @@ namespace acidphantasm_botplacementsystem.Patches
             botsController.DestroyInfo(botPlayer);
             UnityEngine.Object.DestroyImmediate(botToDespawn.gameObject);
             UnityEngine.Object.Destroy(botToDespawn);
-        }
-
-        private static float _lastPmcTickLogTime = 0f;
-        private const float PmcTickLogInterval = 10f;
-
-        private static void LogPmcTick(string reason, string detail = null)
-        {
-            if (!Plugin.DebugLogging) return;
-            if (Time.time - _lastPmcTickLogTime < PmcTickLogInterval) return;
-            _lastPmcTickLogTime = Time.time;
-            Plugin.LogSource.LogInfo($"[ABPS PMC tick] {reason}{(detail != null ? " | " + detail : "")}");
-        }
-
-        private static void TryToSpawnPmc(BotsController botsController, AbstractGame abstractGame, LocationSettingsClass.Location location)
-        {
-            // Per-map cap (config). If unknown map, bail.
-            var mapName = (Utility.CurrentLocation ?? "default").ToLower();
-            var maxPmcs = Utility.GetMaxPmcsForMap(mapName);
-            if (maxPmcs <= 0) { LogPmcTick("bail: unknown map", mapName); return; }
-
-            // Hard cap: never exceed per-map PMC total for this raid.
-            if (Utility.PmcsSpawnedThisRaid >= maxPmcs)
-            {
-                LogPmcTick("bail: cap reached", $"{Utility.PmcsSpawnedThisRaid}/{maxPmcs}");
-                return;
-            }
-
-            // Grace period: give starting PMCs (Time=1, server-scheduled) a head start.
-            var raidElapsed = abstractGame.PastTime - location.BotStart;
-            if (raidElapsed < Plugin.PmcStartDelaySeconds)
-            {
-                LogPmcTick("bail: grace period", $"elapsed {raidElapsed:0}s / {Plugin.PmcStartDelaySeconds:0}s");
-                return;
-            }
-
-            // Per-PMC attempt interval (independent from scav interval).
-            var sinceLast = Time.time - Utility.LastPmcSpawnAttemptTime;
-            if (sinceLast < Plugin.PmcSpawnAttemptInterval)
-            {
-                // No log here: would spam every frame between attempts.
-                return;
-            }
-            Utility.LastPmcSpawnAttemptTime = Time.time;
-
-            // Schedule curve: budget unlocks progressively over raid time.
-            var botStart = (float)location.BotStart;
-            var botStop = (float)location.BotStop;
-            double allowedFrac = 1.0;
-            double elapsedFrac = 0.0;
-            if (botStop > botStart)
-            {
-                elapsedFrac = Math.Min(1.0, Math.Max(0.0, (abstractGame.PastTime - botStart) / (botStop - botStart)));
-                var startBudget = Plugin.PmcScheduleStartPercent;
-                var midTime = Plugin.PmcScheduleMidTimePercent;
-                var midBudget = Math.Max(Plugin.PmcScheduleStartPercent, Plugin.PmcScheduleMidBudgetPercent);
-                var fullTime = Math.Max(midTime + 0.001, Plugin.PmcScheduleFullPercent);
-
-                if (elapsedFrac >= fullTime)
-                    allowedFrac = 1.0;
-                else if (elapsedFrac <= midTime)
-                {
-                    var segment = midTime > 0 ? elapsedFrac / midTime : 1.0;
-                    allowedFrac = startBudget + (midBudget - startBudget) * segment;
-                }
-                else
-                {
-                    var segment = (elapsedFrac - midTime) / Math.Max(0.0001, fullTime - midTime);
-                    allowedFrac = midBudget + (1.0 - midBudget) * segment;
-                }
-
-                if (Utility.PmcsSpawnedThisRaid >= maxPmcs * allowedFrac)
-                {
-                    if (Plugin.DebugLogging)
-                        Plugin.LogSource.LogInfo($"[ABPS PMC tick] bail: schedule curve | spawned {Utility.PmcsSpawnedThisRaid}/{maxPmcs}, allowed {maxPmcs * allowedFrac:0.0} (elapsedFrac {elapsedFrac:0.00}, allowedFrac {allowedFrac:0.00})");
-                    return;
-                }
-            }
-
-            // Group roll. Group size is additional members beyond the leader.
-            var groupSize = 0;
-            if (Plugin.PmcMaxGroupSize > 1 && Utility.PmcsSpawnedThisRaid + 1 < maxPmcs)
-            {
-                if (UnityEngine.Random.Range(0, 100) < Plugin.PmcGroupChance)
-                {
-                    groupSize = UnityEngine.Random.Range(1, Plugin.PmcMaxGroupSize + 1);
-                    var remaining = maxPmcs - Utility.PmcsSpawnedThisRaid - 1;
-                    if (groupSize > remaining) groupSize = Math.Max(0, remaining);
-                }
-            }
-            var totalBots = 1 + groupSize;
-
-            // USEC vs BEAR roll.
-            var isUsec = UnityEngine.Random.Range(0, 100) < Plugin.UsecChancePercent;
-            var spawnType = isUsec ? WildSpawnType.pmcUSEC : WildSpawnType.pmcBEAR;
-            var side = isUsec ? EPlayerSide.Usec : EPlayerSide.Bear;
-
-            // Pick a zone (any non-snipe). The actual spawn point is overridden by
-            // TryToSpawnInZonePatch when the wave fires.
-            if (Utility.CurrentMapZones.Count == 0)
-                Utility.CurrentMapZones = botsController.BotSpawner.AllBotZones.ToList();
-            var botZone = GetValidBotZone(spawnType, totalBots, botsController.BotSpawner.AllBotZones, mapName, botsController);
-
-            if (Plugin.DebugLogging)
-                Plugin.LogSource.LogInfo($"[ABPS PMC tick] attempting | {(isUsec ? "USEC" : "BEAR")} x{totalBots}, zone='{botZone}', elapsedFrac {elapsedFrac:0.00}, allowedFrac {allowedFrac:0.00}, raidElapsed {raidElapsed:0}s, spawned {Utility.PmcsSpawnedThisRaid}/{maxPmcs}");
-
-            try
-            {
-                botsController.ActivateBotsByWave(new BotWaveDataClass
-                {
-                    BotsCount = totalBots,
-                    Time = Time.time,
-                    Difficulty = RollPmcDifficulty(),
-                    IsPlayers = false,
-                    Side = side,
-                    WildSpawnType = spawnType,
-                    SpawnAreaName = botZone,
-                    WithCheckMinMax = false,
-                    ChanceGroup = 0,
-                });
-
-                Utility.PmcsSpawnedThisRaid += totalBots;
-
-                if (Plugin.DebugLogging)
-                    Plugin.LogSource.LogInfo($"[ABPS PMC tick] QUEUED {(isUsec ? "USEC" : "BEAR")} x{totalBots} on {mapName} ({Utility.PmcsSpawnedThisRaid}/{maxPmcs})");
-            }
-            catch (Exception ex)
-            {
-                Plugin.LogSource.LogError($"[ABPS] PMC ActivateBotsByWave failed: {ex.GetType().Name}: {ex.Message}");
-            }
-        }
-
-        // Weighted PMC difficulty roll matching the original server config
-        // pmcDifficulty: easy=10, normal=50, hard=30, impossible=10. Used for wave
-        // PMCs because the scav BotDifficulty randomizer doesn't reflect PMC tuning.
-        private static BotDifficulty RollPmcDifficulty()
-        {
-            var roll = UnityEngine.Random.Range(0, 100);
-            if (roll < 10) return BotDifficulty.easy;
-            if (roll < 60) return BotDifficulty.normal;
-            if (roll < 90) return BotDifficulty.hard;
-            return BotDifficulty.impossible;
         }
         
         private static string GetValidBotZone(WildSpawnType botType, int count, BotZone[] allZones, string location, BotsController _botsController)

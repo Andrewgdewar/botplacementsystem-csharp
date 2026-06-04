@@ -114,11 +114,9 @@ namespace acidphantasm_botplacementsystem
         public static float PmcScheduleMidTimePercent;
         public static float PmcScheduleMidBudgetPercent;
         public static float PmcScheduleFullPercent;
-        public static float PmcSpawnAttemptInterval;
-        public static int PmcGroupChance;
-        public static int PmcMaxGroupSize;
-        public static int UsecChancePercent;
-        public static float PmcStartDelaySeconds;
+        // PMC wave group-size weights: each index = group total (index 0 = solo, 1 = 2-man, etc.).
+        // Parsed from the "PMC Wave Group Size Weights" string config (comma-separated ints).
+        public static int[] PmcWaveGroupSizeWeights = new[] { 60, 20, 10, 5, 5 };
 
         public static BotSpawner BotSpawnerInstance;
 

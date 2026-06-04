@@ -71,7 +71,7 @@
       }
     },
     "waves": {
-      "enable": false,
+      "enable": true,
       "allowPmcsOnLabyrinth": false,
       "ignoreMaxBotCaps": true,
       "groupChance": 20,

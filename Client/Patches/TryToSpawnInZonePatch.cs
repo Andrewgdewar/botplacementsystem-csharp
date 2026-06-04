@@ -29,11 +29,10 @@ namespace acidphantasm_botplacementsystem.Patches
         {
             try
             {
-                if (pointsToSpawn != null) return;
-
-                var isScav = data.IsValidSpawnType(WildSpawnType.assault);
-                var isPmc = data.IsValidSpawnType(WildSpawnType.pmcUSEC) || data.IsValidSpawnType(WildSpawnType.pmcBEAR);
-                if (!isScav && !isPmc) return;
+                // Scavs only: PMC spawn point selection lives in PmcSpawnHookPatch
+                // (BossSpawnerClass.method_2), which is the correct game-side entry
+                // point for PMC waves shipped as BossLocationSpawn entries.
+                if (!data.IsValidSpawnType(WildSpawnType.assault) || pointsToSpawn != null) return;
 
                 var mapName = Utility.CurrentLocation.ToLower();
                 var pmcDistance = GetDistanceForMap(mapName);
@@ -49,9 +48,7 @@ namespace acidphantasm_botplacementsystem.Patches
                     scavList = Utility.CachedAssaultBots.ToList();
                 }
 
-                ISpawnPoint bestPoint = isPmc
-                    ? FindBestPmcSpawnPoint(pmcList, pmcDistance, scavList, scavDistance)
-                    : FindBestGlobalSpawnPoint(pmcList, pmcDistance, scavList, scavDistance);
+                var bestPoint = FindBestGlobalSpawnPoint(pmcList, pmcDistance, scavList, scavDistance);
 
                 if (bestPoint != null)
                 {
@@ -66,7 +63,7 @@ namespace acidphantasm_botplacementsystem.Patches
                 else
                 {
                     if (Plugin.DebugLogging)
-                        Plugin.LogSource.LogInfo($"{data.Id} - No valid spawn points found ({(isPmc ? "PMC" : "scav")})");
+                        Plugin.LogSource.LogInfo($"{data.Id} - No valid scav spawn points found globally");
                     pointsToSpawn = null;
                 }
             }
@@ -74,66 +71,6 @@ namespace acidphantasm_botplacementsystem.Patches
             {
                 Plugin.LogSource.LogError($"TryToSpawnInZonePatch EXCEPTION: {ex.GetType().Name}: {ex.Message}\n{ex.StackTrace}");
             }
-        }
-
-        /// <summary>
-        /// PMC spawn point selection. Uses Utility.PlayerSpawnPoints (locked at raid start
-        /// with PmcSpawnNoise) and picks a slot deterministically based on
-        /// PmcsSpawnedThisRaid / maxPmcs so PMCs spread across the sorted list.
-        /// </summary>
-        private static ISpawnPoint FindBestPmcSpawnPoint(IReadOnlyCollection<Player> pmcList, float pmcDistance, IReadOnlyCollection<Player> scavList, float scavDistance)
-        {
-            var source = Utility.PlayerSpawnPoints;
-            if (source == null || source.Count == 0)
-            {
-                if (Plugin.DebugLogging)
-                    Plugin.LogSource.LogInfo($"[ABPS PMC pick] FAIL: PlayerSpawnPoints empty (source null? {source == null})");
-                return null;
-            }
-
-            // Skip closest N% (PMC), don't re-sort (list is locked from raid start).
-            var skipCount = (int)Math.Floor(source.Count * Plugin.PmcSkipClosestPercent);
-            var list = (skipCount > 0 && skipCount < source.Count)
-                ? source.GetRange(skipCount, source.Count - skipCount)
-                : new List<ISpawnPoint>(source);
-
-            var mapName = (Utility.CurrentLocation ?? "default").ToLower();
-            var maxPmcs = Utility.GetMaxPmcsForMap(mapName);
-            var startIndex = 0;
-            if (maxPmcs > 0)
-            {
-                var targetFraction = Math.Min(0.999f, (float)Utility.PmcsSpawnedThisRaid / maxPmcs);
-                startIndex = Math.Min(list.Count - 1, (int)Math.Floor(list.Count * targetFraction));
-            }
-
-            var invalidCount = 0;
-            var usedCount = 0;
-
-            // Forward search from startIndex.
-            for (var i = startIndex; i < list.Count; i++)
-            {
-                var p = list[i];
-                if (Utility.UsedSpawnPointIds.Contains(p.Id)) { usedCount++; continue; }
-                if (!IsValid(p, pmcList, pmcDistance) || !IsValid(p, scavList, scavDistance)) { invalidCount++; continue; }
-                Utility.UsedSpawnPointIds.Add(p.Id);
-                if (Plugin.DebugLogging)
-                    Plugin.LogSource.LogInfo($"[ABPS PMC pick] OK: idx {i}/{list.Count} (start {startIndex}), skipped {usedCount} used + {invalidCount} invalid");
-                return p;
-            }
-            // Wrap to beginning of usable list.
-            for (var i = 0; i < startIndex; i++)
-            {
-                var p = list[i];
-                if (Utility.UsedSpawnPointIds.Contains(p.Id)) { usedCount++; continue; }
-                if (!IsValid(p, pmcList, pmcDistance) || !IsValid(p, scavList, scavDistance)) { invalidCount++; continue; }
-                Utility.UsedSpawnPointIds.Add(p.Id);
-                if (Plugin.DebugLogging)
-                    Plugin.LogSource.LogInfo($"[ABPS PMC pick] OK (wrap): idx {i}/{list.Count} (start was {startIndex}), skipped {usedCount} used + {invalidCount} invalid");
-                return p;
-            }
-            if (Plugin.DebugLogging)
-                Plugin.LogSource.LogInfo($"[ABPS PMC pick] FAIL: no valid point | list={list.Count} (source {source.Count} -skip {skipCount}), pmcDistance={pmcDistance}, scavDistance={scavDistance}, used={usedCount}, invalid={invalidCount}, pmcs={pmcList?.Count ?? 0}, scavs={scavList?.Count ?? 0}");
-            return null;
         }
 
         /// <summary>

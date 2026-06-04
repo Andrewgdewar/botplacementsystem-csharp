@@ -37,6 +37,11 @@ namespace acidphantasm_botplacementsystem.Utils
         public static double BotsSpawnedPerPlayer = 0.0d;
         public static int PmcsSpawnedThisRaid = 0;
         public static float LastPmcSpawnAttemptTime = 0f;
+        // BotStart/BotStop from current map's LocationSettings, captured by
+        // NonWavesSpawnSystemPatch the first time it runs. Used by other patches
+        // (PmcSpawnHookPatch curve gate) that don't have direct access to that data.
+        public static float RaidBotStart = 0f;
+        public static float RaidBotStop = 0f;
         
         // Player spawn position for distance-sorted spawning
         public static Vector3? InitialPlayerSpawnPosition = null;
@@ -113,6 +118,8 @@ namespace acidphantasm_botplacementsystem.Utils
             BotsSpawnedPerPlayer = 0.0;
             PmcsSpawnedThisRaid = 0;
             LastPmcSpawnAttemptTime = 0f;
+            RaidBotStart = 0f;
+            RaidBotStop = 0f;
             
             // Recache spawn points now
             _allSpawnPoints = SpawnPointManagerClass.CreateFromScene().ToList();

@@ -1,5 +1,7 @@
 using BepInEx.Configuration;
 using System;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace acidphantasm_botplacementsystem
 {
@@ -111,11 +113,7 @@ namespace acidphantasm_botplacementsystem
         private static ConfigEntry<float> _pmcScheduleMidTimePercent;
         private static ConfigEntry<float> _pmcScheduleMidBudgetPercent;
         private static ConfigEntry<float> _pmcScheduleFullPercent;
-        private static ConfigEntry<float> _pmcSpawnAttemptInterval;
-        private static ConfigEntry<int> _pmcGroupChance;
-        private static ConfigEntry<int> _pmcMaxGroupSize;
-        private static ConfigEntry<int> _usecChancePercent;
-        private static ConfigEntry<float> _pmcStartDelaySeconds;
+        private static ConfigEntry<string> _pmcWaveGroupSizeWeights;
 
         private static ConfigEntry<int> BindMaxPmc(ConfigFile config, string label, int defaultValue, string description)
         {
@@ -917,55 +915,40 @@ namespace acidphantasm_botplacementsystem
             Plugin.PmcScheduleFullPercent = _pmcScheduleFullPercent.Value;
             _pmcScheduleFullPercent.SettingChanged += ABPS_SettingChanged;
 
-            _pmcSpawnAttemptInterval = config.Bind(
+            _pmcWaveGroupSizeWeights = config.Bind(
                 GeneralConfig,
-                "PMC Spawn Attempt Interval",
-                45f,
-                new ConfigDescription("Minimum seconds between PMC spawn attempts. Lower = more frequent attempts (still gated by curve + cap).",
-                    new AcceptableValueRange<float>(10f, 300f),
+                "PMC Wave Group Size Weights",
+                "60,20,10,5,5",
+                new ConfigDescription("Comma-separated weights for PMC wave group sizes. Index 0 = solo, 1 = 2-man, 2 = 3-man, 3 = 4-man, 4 = 5-man. Higher = more common. Example: '60,20,10,5,5' = 60pct solo, 20pct duo, 10pct trio, 5pct each for 4 and 5.",
+                    null,
                     new ConfigurationManagerAttributes { Order = _loadOrder-- }));
-            Plugin.PmcSpawnAttemptInterval = _pmcSpawnAttemptInterval.Value;
-            _pmcSpawnAttemptInterval.SettingChanged += ABPS_SettingChanged;
+            ParseAndApplyPmcGroupWeights(_pmcWaveGroupSizeWeights.Value);
+            _pmcWaveGroupSizeWeights.SettingChanged += ABPS_SettingChanged;
+        }
 
-            _pmcGroupChance = config.Bind(
-                GeneralConfig,
-                "PMC Group Chance",
-                20,
-                new ConfigDescription("Percent chance a PMC spawn rolls as a group (vs solo).",
-                    new AcceptableValueRange<int>(0, 100),
-                    new ConfigurationManagerAttributes { Order = _loadOrder-- }));
-            Plugin.PmcGroupChance = _pmcGroupChance.Value;
-            _pmcGroupChance.SettingChanged += ABPS_SettingChanged;
-
-            _pmcMaxGroupSize = config.Bind(
-                GeneralConfig,
-                "PMC Max Group Size",
-                2,
-                new ConfigDescription("Max additional PMCs in a group (total group = 1 + this).",
-                    new AcceptableValueRange<int>(1, 5),
-                    new ConfigurationManagerAttributes { Order = _loadOrder-- }));
-            Plugin.PmcMaxGroupSize = _pmcMaxGroupSize.Value;
-            _pmcMaxGroupSize.SettingChanged += ABPS_SettingChanged;
-
-            _usecChancePercent = config.Bind(
-                GeneralConfig,
-                "USEC Chance Percent",
-                50,
-                new ConfigDescription("Percent chance a PMC spawn is USEC (vs BEAR).",
-                    new AcceptableValueRange<int>(0, 100),
-                    new ConfigurationManagerAttributes { Order = _loadOrder-- }));
-            Plugin.UsecChancePercent = _usecChancePercent.Value;
-            _usecChancePercent.SettingChanged += ABPS_SettingChanged;
-
-            _pmcStartDelaySeconds = config.Bind(
-                GeneralConfig,
-                "PMC Start Delay Seconds",
-                60f,
-                new ConfigDescription("Grace period at raid start before any wave PMCs are considered, so starting PMCs play out first.",
-                    new AcceptableValueRange<float>(0f, 600f),
-                    new ConfigurationManagerAttributes { Order = _loadOrder-- }));
-            Plugin.PmcStartDelaySeconds = _pmcStartDelaySeconds.Value;
-            _pmcStartDelaySeconds.SettingChanged += ABPS_SettingChanged;
+        private static void ParseAndApplyPmcGroupWeights(string raw)
+        {
+            try
+            {
+                var parts = (raw ?? "").Split(',');
+                var weights = new List<int>();
+                foreach (var part in parts)
+                {
+                    if (int.TryParse(part.Trim(), out var w) && w >= 0)
+                        weights.Add(w);
+                }
+                if (weights.Count == 0 || weights.Sum() == 0)
+                {
+                    Plugin.LogSource.LogWarning($"[ABPS] PMC Wave Group Size Weights invalid ('{raw}'), using defaults 60,20,10,5,5");
+                    Plugin.PmcWaveGroupSizeWeights = new[] { 60, 20, 10, 5, 5 };
+                    return;
+                }
+                Plugin.PmcWaveGroupSizeWeights = weights.ToArray();
+            }
+            catch
+            {
+                Plugin.PmcWaveGroupSizeWeights = new[] { 60, 20, 10, 5, 5 };
+            }
         }
         private static void ABPS_SettingChanged(object sender, EventArgs e)
         {
@@ -1065,11 +1048,7 @@ namespace acidphantasm_botplacementsystem
             Plugin.PmcScheduleMidTimePercent = _pmcScheduleMidTimePercent.Value;
             Plugin.PmcScheduleMidBudgetPercent = _pmcScheduleMidBudgetPercent.Value;
             Plugin.PmcScheduleFullPercent = _pmcScheduleFullPercent.Value;
-            Plugin.PmcSpawnAttemptInterval = _pmcSpawnAttemptInterval.Value;
-            Plugin.PmcGroupChance = _pmcGroupChance.Value;
-            Plugin.PmcMaxGroupSize = _pmcMaxGroupSize.Value;
-            Plugin.UsecChancePercent = _usecChancePercent.Value;
-            Plugin.PmcStartDelaySeconds = _pmcStartDelaySeconds.Value;
+            ParseAndApplyPmcGroupWeights(_pmcWaveGroupSizeWeights.Value);
         }
     }
 }

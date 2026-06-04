@@ -1,6 +1,7 @@
 using System;
 using acidphantasm_botplacementsystem.Spawning;
 using acidphantasm_botplacementsystem.Utils;
+using Comfort.Common;
 using EFT;
 using EFT.Game.Spawning;
 using HarmonyLib;
@@ -15,6 +16,89 @@ namespace acidphantasm_botplacementsystem.Patches
     internal class PmcSpawnHookPatch : ModulePatch
     {
         private const float GroupClusterRadius = 20f;
+
+        /// <summary>
+        /// Schedule curve gate for wave PMCs. Returns true if the current PMC count is
+        /// under the curve's "allowed" cap at this raid time. Server schedules waves
+        /// generously (1/min); this gate decides which fire and which silently reject.
+        /// Piecewise linear: (0%, StartPct), (MidTime, MidBudgetPct), (FullTime, 100%).
+        /// </summary>
+        private static bool TryReleaseFromCurve(int maxPmcs, string location)
+        {
+            var game = Singleton<AbstractGame>.Instance;
+            if (game == null) return true; // no timing source, fail open
+
+            var pastTime = game.PastTime;
+            var botStart = Utility.RaidBotStart;
+            var botStop = Utility.RaidBotStop;
+
+            // Fall back to a 45-min window if NonWavesSpawnSystemPatch hasn't run yet
+            // (eg PMC waves hitting before any scav-tick has fired). Better than no gate.
+            if (botStop <= botStart)
+            {
+                botStart = 0f;
+                botStop = 2700f;
+            }
+
+            var elapsedFrac = Math.Min(1.0, Math.Max(0.0, (pastTime - botStart) / (botStop - botStart)));
+            var startBudget = Plugin.PmcScheduleStartPercent;
+            var midTime = Plugin.PmcScheduleMidTimePercent;
+            var midBudget = Math.Max(Plugin.PmcScheduleStartPercent, Plugin.PmcScheduleMidBudgetPercent);
+            var fullTime = Math.Max(midTime + 0.001, Plugin.PmcScheduleFullPercent);
+
+            double allowedFrac;
+            if (elapsedFrac >= fullTime)
+                allowedFrac = 1.0;
+            else if (elapsedFrac <= midTime)
+            {
+                var segment = midTime > 0 ? elapsedFrac / midTime : 1.0;
+                allowedFrac = startBudget + (midBudget - startBudget) * segment;
+            }
+            else
+            {
+                var segment = (elapsedFrac - midTime) / Math.Max(0.0001, fullTime - midTime);
+                allowedFrac = midBudget + (1.0 - midBudget) * segment;
+            }
+
+            var allowedCount = maxPmcs * allowedFrac;
+            if (Utility.PmcsSpawnedThisRaid >= allowedCount)
+            {
+                if (Plugin.DebugLogging)
+                    Logger.LogInfo($"[ABPS] PMC schedule gate: {Utility.PmcsSpawnedThisRaid}/{maxPmcs} (allowed {allowedCount:0.0} at elapsed {elapsedFrac:0.00}/full {fullTime:0.00}), rejecting wave on {location}");
+                return false;
+            }
+            return true;
+        }
+
+        /// <summary>
+        /// Roll a group size (in addition to the leader) from the configured
+        /// Plugin.PmcWaveGroupSizeWeights array. Index 0 = solo, 1 = 2-man, etc.
+        /// Result is clamped to remaining cap.
+        /// </summary>
+        private static int RollExtraGroupMembers(int maxPmcs, int leaderCount)
+        {
+            var weights = Plugin.PmcWaveGroupSizeWeights;
+            if (weights == null || weights.Length == 0) return 0;
+
+            var total = 0;
+            for (var i = 0; i < weights.Length; i++) total += Math.Max(0, weights[i]);
+            if (total <= 0) return 0;
+
+            var roll = UnityEngine.Random.Range(0, total);
+            var pick = 0;
+            for (var i = 0; i < weights.Length; i++)
+            {
+                var w = Math.Max(0, weights[i]);
+                if (roll < w) { pick = i; break; }
+                roll -= w;
+            }
+            // pick = index in weights = group total (0 = solo, 1 = 2-man, ...). Extras = pick.
+            if (pick <= 0) return 0;
+
+            // Clamp to remaining cap so a 4-man roll doesn't overshoot.
+            var remaining = maxPmcs - Utility.PmcsSpawnedThisRaid - leaderCount;
+            return Math.Max(0, Math.Min(pick, remaining));
+        }
 
         protected override MethodBase GetTargetMethod()
         {
@@ -36,13 +120,38 @@ namespace acidphantasm_botplacementsystem.Patches
                     Logger.LogInfo($"Spawn Point Attempt: {creationData.Profiles[0].Nickname} | WildSpawnType: {wave.BossType} | Count: {1 + wave.EscortCount}");
 
                 var soloPointCount = 1;
-                var escortPointCount = 1 + wave.EscortCount;
                 var location = Utility.CurrentLocation ?? "default";
                 location = location.ToLower();
+                var maxPmcs = Utility.GetMaxPmcsForMap(location);
+
+                // Schedule curve gate: server schedules waves generously (1/min). Client
+                // releases them based on raid progress so PMCs trickle steadily instead
+                // of all firing early. Starting PMCs (Time=1) bypass this check by way
+                // of the hard cap accounting only.
+                if (maxPmcs > 0 && wave.Time > 1 && !TryReleaseFromCurve(maxPmcs, location))
+                {
+                    __result = true;
+                    return false;
+                }
+
+                // Group roll (wave PMCs only). Server ships every wave as a solo
+                // (EscortCount=0); upgrade it here per the weighted distribution.
+                // Starting PMCs (Time=1) keep their server-configured group size.
+                if (wave.Time > 1 && maxPmcs > 0)
+                {
+                    var extras = RollExtraGroupMembers(maxPmcs, 1);
+                    if (extras > 0)
+                    {
+                        wave.EscortCount = extras;
+                        if (Plugin.DebugLogging)
+                            Logger.LogInfo($"[ABPS] PMC group rolled: leader + {extras} extras");
+                    }
+                }
+
+                var escortPointCount = 1 + wave.EscortCount;
 
                 // Runtime hard cap: skip this wave if it would push us past the per-map total.
                 // A group that would partially fit is rejected entirely so we don't overshoot.
-                var maxPmcs = Utility.GetMaxPmcsForMap(location);
                 if (maxPmcs > 0 && Utility.PmcsSpawnedThisRaid + escortPointCount > maxPmcs)
                 {
                     if (Plugin.DebugLogging)
