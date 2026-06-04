@@ -331,38 +331,28 @@ namespace acidphantasm_botplacementsystem.Utils
             if (aliveCount == 0) return;
 
             var currentPos = center / aliveCount;
-            
+
             // Update positions
             CurrentPlayerPosition = currentPos;
             _lastPositionUpdateTime = Time.time;
             PositionSnapshotVersion++;
-            
-            // Add to position history
+
             _positionHistory.Add(currentPos);
             if (_positionHistory.Count > MaxPositionHistory)
                 _positionHistory.RemoveAt(0);
-            
-            // Compute travel direction from averaged position history
-            if (_positionHistory.Count >= 3)
+
+            // Travel direction is anchored at the initial spawn point: it's the vector
+            // FROM where the squad spawned TO their current position. This stays stable
+            // for the whole raid (no oscillation, no staleness once you stop) and lines
+            // up with the natural play pattern of moving outward from spawn.
+            if (InitialPlayerSpawnPosition.HasValue)
             {
-                var halfCount = _positionHistory.Count / 2;
-                var earlyAvg = Vector3.zero;
-                var lateAvg = Vector3.zero;
-                
-                for (var i = 0; i < halfCount; i++)
-                    earlyAvg += _positionHistory[i];
-                earlyAvg /= halfCount;
-                
-                for (var i = _positionHistory.Count - halfCount; i < _positionHistory.Count; i++)
-                    lateAvg += _positionHistory[i];
-                lateAvg /= halfCount;
-                
-                var direction = lateAvg - earlyAvg;
+                var direction = currentPos - InitialPlayerSpawnPosition.Value;
                 if (direction.magnitude > MinDirectionDistance)
                 {
                     TravelDirection = direction.normalized;
                     if (Plugin.DebugLogging)
-                        Plugin.LogSource.LogInfo($"[ABPS] Travel direction updated: {TravelDirection.Value}, history: {_positionHistory.Count}");
+                        Plugin.LogSource.LogInfo($"[ABPS] Travel direction (from spawn anchor): {TravelDirection.Value}, dist {direction.magnitude:0}m");
                 }
             }
             
