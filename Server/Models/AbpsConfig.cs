@@ -19,6 +19,14 @@ public record AbpsConfig
 
     [JsonPropertyName("configAppSettings")]
     public required ConfigAppSettings ConfigAppSettings { get; set; }
+
+    [JsonPropertyName("presetConfig")]
+    public PresetConfig? PresetConfig { get; set; }
+}
+
+public record PresetConfig
+{
+    [JsonPropertyName("enable")] public bool Enable { get; set; }
 }
 
 public record PmcTypeChance
@@ -364,6 +372,12 @@ public record WaveConfig
     [JsonPropertyName("maxGroupSize")] public int MaxGroupSize { get; set; }
     [JsonPropertyName("maxGroupCount")] public int MaxGroupCount { get; set; }
     [JsonPropertyName("maxBotsPerWave")] public int MaxBotsPerWave { get; set; }
+
+    // Weighted escort-count distribution for wave PMCs, e.g. "0,0,0,1,1,2,3".
+    // SPT picks one value uniformly at random per wave (so repeat values to
+    // weight them) and generates that many escort profiles in addition to the
+    // leader. "0" = solo. Empty/null falls back to solo.
+    [JsonPropertyName("escortAmount")] public string? EscortAmount { get; set; }
 
     [JsonPropertyName("delayBeforeFirstWave")] public int DelayBeforeFirstWave { get; set; }
 

@@ -78,6 +78,7 @@
       "maxGroupSize": 2,
       "maxGroupCount": 3,
       "maxBotsPerWave": 4,
+      "escortAmount": "0,0,0,0,1,1,2,3",
       "delayBeforeFirstWave": 30,
       "secondsBetweenWaves": 360,
       "stopWavesBeforeEndOfRaidLimit": 300
@@ -807,5 +808,8 @@
     "allowUpdateChecks": false,
     "requireAuthCode": false,
     "authCode": "Kitten Mittons"
+  },
+  "presetConfig": {
+    "enable": true
   }
 }

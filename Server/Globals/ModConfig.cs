@@ -121,4 +121,14 @@ public class ModConfig : IOnLoad
         var json = _jsonUtil.Serialize(source);
         return _jsonUtil.Deserialize<T>(json)!;
     }
+
+    /// <summary>
+    /// Reverts the active <see cref="Config"/> to a clone of <see cref="OriginalConfig"/>,
+    /// undoing any prior preset overlay so the user's saved config is in effect.
+    /// </summary>
+    public static void RestoreFromOriginal()
+    {
+        if (OriginalConfig != null)
+            Config = DeepClone(OriginalConfig);
+    }
 }

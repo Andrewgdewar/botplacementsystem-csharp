@@ -16,7 +16,8 @@ public class MapSpawns(
     PmcSpawns pmcSpawns,
     VanillaAdjustments vanillaAdjustments,
     ICloner cloner,
-    DatabaseService databaseService)
+    DatabaseService databaseService,
+    PresetManager presetManager)
 {
     private List<string> _validMaps =
     [
@@ -43,6 +44,11 @@ public class MapSpawns(
 
     public void ConfigureInitialData()
     {
+        // Roll a preset (or restore to live-like) before any cache rebuild uses
+        // ModConfig.Config. The preset overlay must be in place for the whole
+        // pipeline below.
+        presetManager.RollAndApply();
+
         _locationData = databaseService.GetLocations().GetDictionary();
 
         foreach (var map in _validMaps)

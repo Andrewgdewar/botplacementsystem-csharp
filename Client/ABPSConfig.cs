@@ -1,12 +1,18 @@
 using BepInEx.Configuration;
 using System;
+using UnityEngine;
 
 namespace acidphantasm_botplacementsystem
 {
     internal static class AbpsConfig
     {
         private static int _loadOrder = 200;
-        
+
+        private const string PresetConfigSection = "0. Preset Settings";
+        private static ConfigEntry<bool> _announcePresetOnRaidStart;
+        private static ConfigEntry<bool> _enableAnnouncePresetHotkey;
+        private static ConfigEntry<KeyboardShortcut> _announcePresetHotkey;
+
         private const string DespawnConfig = "1. Despawn Settings";
         private static ConfigEntry<bool> _despawnFurthest;
         private static ConfigEntry<bool> _despawnPmcs;
@@ -138,6 +144,37 @@ namespace acidphantasm_botplacementsystem
 
         public static void InitAbpsConfig(ConfigFile config)
         {
+            // Preset Settings (section "0." so it sorts to the top of F12)
+            _announcePresetOnRaidStart = config.Bind(
+                PresetConfigSection,
+                "Announce Preset On Raid Start",
+                true,
+                new ConfigDescription("Show the active ABPS preset name as an in-game notification at the start of every raid.",
+                    null,
+                    new ConfigurationManagerAttributes { Order = _loadOrder-- }));
+            Plugin.AnnouncePresetOnRaidStart = _announcePresetOnRaidStart.Value;
+            _announcePresetOnRaidStart.SettingChanged += ABPS_SettingChanged;
+
+            _enableAnnouncePresetHotkey = config.Bind(
+                PresetConfigSection,
+                "Enable Announce Hotkey",
+                true,
+                new ConfigDescription("If enabled, pressing the hotkey while in a raid re-announces the active preset.",
+                    null,
+                    new ConfigurationManagerAttributes { Order = _loadOrder-- }));
+            Plugin.EnableAnnouncePresetHotkey = _enableAnnouncePresetHotkey.Value;
+            _enableAnnouncePresetHotkey.SettingChanged += ABPS_SettingChanged;
+
+            _announcePresetHotkey = config.Bind(
+                PresetConfigSection,
+                "Announce Preset Hotkey",
+                new KeyboardShortcut(KeyCode.Home),
+                new ConfigDescription("Press this key in-raid to re-announce the active ABPS preset. Hold modifiers as configured.",
+                    null,
+                    new ConfigurationManagerAttributes { Order = _loadOrder-- }));
+            Plugin.AnnouncePresetHotkey = _announcePresetHotkey.Value;
+            _announcePresetHotkey.SettingChanged += ABPS_SettingChanged;
+
             // Despawn Settings
             _despawnFurthest = config.Bind(
                 DespawnConfig,
@@ -937,6 +974,10 @@ namespace acidphantasm_botplacementsystem
 
         private static void ABPS_SettingChanged(object sender, EventArgs e)
         {
+            Plugin.AnnouncePresetOnRaidStart = _announcePresetOnRaidStart.Value;
+            Plugin.EnableAnnouncePresetHotkey = _enableAnnouncePresetHotkey.Value;
+            Plugin.AnnouncePresetHotkey = _announcePresetHotkey.Value;
+
             Plugin.DespawnFurthest = _despawnFurthest.Value;
             Plugin.DespawnDistance = _despawnDistance.Value;
             

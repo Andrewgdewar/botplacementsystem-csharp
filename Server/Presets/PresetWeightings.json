@@ -1,0 +1,12 @@
+{
+  "live-like": 35,
+  "quiet-raids": 10,
+  "more-scavs": 10,
+  "more-pmcs": 8,
+  "more-scavs-and-pmcs": 8,
+  "delayed-scavs": 5,
+  "delayed-pmcs": 5,
+  "main-boss-guaranteed": 8,
+  "main-boss-guaranteed-roaming": 6,
+  "insanity": 5
+}

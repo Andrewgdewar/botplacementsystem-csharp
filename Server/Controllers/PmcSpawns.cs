@@ -57,6 +57,13 @@ public class PmcSpawns(
         var firstWaveTimer = ModConfig.Config.PmcConfig.Waves.DelayBeforeFirstWave;
         var stopBeforeEndOfRaid = ModConfig.Config.PmcConfig.Waves.StopWavesBeforeEndOfRaidLimit;
 
+        // Weighted escort-count distribution string (e.g. "0,0,0,1,1,2,3").
+        // SPT rolls one value per wave and generates that many escort profiles,
+        // so groups are produced server-side with their profiles intact (the
+        // client just caps + places them). Falls back to solo if unset.
+        var escortAmount = ModConfig.Config.PmcConfig.Waves.EscortAmount;
+        if (string.IsNullOrWhiteSpace(escortAmount)) escortAmount = "0";
+
         var raidSeconds = escapeTimeLimit * 60;
         var endTime = raidSeconds - stopBeforeEndOfRaid;
         if (endTime <= firstWaveTimer)
@@ -76,7 +83,7 @@ public class PmcSpawns(
             var bossDefaultData = cloner.Clone(GetDefaultValuesForBoss(pmcType));
             if (bossDefaultData is null) { currentTime += intervalSeconds; continue; }
 
-            bossDefaultData[0].BossEscortAmount = "0"; // solo by default; client could be extended to group later
+            bossDefaultData[0].BossEscortAmount = escortAmount; // SPT rolls a value from this weighted list per wave
             bossDefaultData[0].Time = currentTime;
             bossDefaultData[0].BossDifficulty = weightedRandomHelper.GetWeightedValue(difficultyWeights);
             bossDefaultData[0].BossEscortDifficulty = weightedRandomHelper.GetWeightedValue(difficultyWeights);
@@ -88,7 +95,7 @@ public class PmcSpawns(
             currentTime += intervalSeconds;
         }
 
-        logger.Info($"[ABPS] {location}: scheduled {totalScheduled} candidate PMC waves (1/min from {firstWaveTimer}s to {endTime:0}s); client cap+curve decides which fire");
+        logger.Info($"[ABPS] {location}: scheduled {totalScheduled} candidate PMC waves (1/min from {firstWaveTimer}s to {endTime:0}s, escort='{escortAmount}'); client cap+curve decides which fire");
         return pmcWaveSpawnInfo;
     }
 

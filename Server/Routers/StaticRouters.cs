@@ -18,6 +18,7 @@ public class StaticRouters : StaticRouter
     private static string? _modPath;
     private static string? _savesPath;
     private static MapSpawns _mapSpawns;
+    private static PresetManager _presetManager;
     private static ISptLogger<StaticRouters> _logger;
 
     public static bool CacheRebuilt = false;
@@ -28,6 +29,7 @@ public class StaticRouters : StaticRouter
         HttpResponseUtil httpResponseUtil,
         ModHelper modHelper,
         MapSpawns mapSpawns,
+        PresetManager presetManager,
         ISptLogger<StaticRouters> logger
     ) : base(
         jsonUtil,
@@ -39,6 +41,7 @@ public class StaticRouters : StaticRouter
         _modPath = modHelper.GetAbsolutePathToModFolder(Assembly.GetExecutingAssembly());;
         _savesPath = Path.Join(_modPath, "Data");
         _mapSpawns = mapSpawns;
+        _presetManager = presetManager;
         _logger = logger;
         Load();
     }
@@ -98,8 +101,35 @@ public class StaticRouters : StaticRouter
                     sessionID,
                     output
                 ) => await new ValueTask<string>(_jsonUtil.Serialize(BossTrackingData))
+            ),
+            new RouteAction("/botplacementsystem/preset",
+                async (
+                    url,
+                    info,
+                    sessionID,
+                    output
+                ) =>
+                {
+                    var payload = _presetManager == null
+                        ? new PresetResponse { Label = "live-like" }
+                        : new PresetResponse
+                        {
+                            Label = _presetManager.ActivePresetLabel,
+                            ScavCapMult = _presetManager.ScavCapMult,
+                            PmcCapMult = _presetManager.PmcCapMult,
+                        };
+                    return await new ValueTask<string>(_jsonUtil.Serialize(payload));
+                }
             )
         ];
+    }
+
+    /// <summary>Wire response for /botplacementsystem/preset. Client uses cap multipliers to scale runtime cap fields.</summary>
+    private sealed class PresetResponse
+    {
+        [System.Text.Json.Serialization.JsonPropertyName("label")] public string Label { get; set; } = string.Empty;
+        [System.Text.Json.Serialization.JsonPropertyName("scavCapMult")] public float ScavCapMult { get; set; } = 1f;
+        [System.Text.Json.Serialization.JsonPropertyName("pmcCapMult")] public float PmcCapMult { get; set; } = 1f;
     }
 
     private static ValueTask<string> SaveBossTrackingData(BossTrackingStats info)

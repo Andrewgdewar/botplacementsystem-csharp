@@ -1,8 +1,11 @@
 using acidphantasm_botplacementsystem.Patches;
+using acidphantasm_botplacementsystem.Spawning;
 using BepInEx;
 using BepInEx.Bootstrap;
+using BepInEx.Configuration;
 using BepInEx.Logging;
 using EFT;
+using UnityEngine;
 
 namespace acidphantasm_botplacementsystem
 {
@@ -117,6 +120,16 @@ namespace acidphantasm_botplacementsystem
         public static float PmcScheduleMidBudgetPercent;
         public static float PmcScheduleFullPercent;
 
+        // Preset announce (client side)
+        public static bool AnnouncePresetOnRaidStart;
+        public static bool EnableAnnouncePresetHotkey;
+        public static KeyboardShortcut AnnouncePresetHotkey;
+        // Preset cap multipliers fetched from server at raid start. Applied to
+        // Utility.GetMaxPmcsForMap / GetMaxScavsForMap so cap-driven gates obey
+        // the active preset. Default 1.0 = no change.
+        public static float PresetScavCapMult = 1f;
+        public static float PresetPmcCapMult = 1f;
+
         public static BotSpawner BotSpawnerInstance;
 
 
@@ -142,8 +155,39 @@ namespace acidphantasm_botplacementsystem
             new TryToSpawnInZonePatch().Enable();
             new IsPlayerEnemyPatch().Enable();
             new BotsControllerInitPatch().Enable();
-            
+            new PresetAnnouncePatch().Enable();
+
             AbpsConfig.InitAbpsConfig(Config);
+        }
+
+        /// <summary>
+        /// Listens for the preset-announce hotkey while a raid is active. Uses the
+        /// MOAR-Client BetterIsDown pattern: only fires once on key-down, and only
+        /// when all modifier keys are also held.
+        /// </summary>
+        private void Update()
+        {
+            try
+            {
+                if (!EnableAnnouncePresetHotkey) return;
+                if (AnnouncePresetHotkey.MainKey == KeyCode.None) return;
+                if (!IsHotkeyPressed(AnnouncePresetHotkey)) return;
+                PresetAnnouncer.Announce();
+            }
+            catch
+            {
+                // Swallow Update errors so we never spam the log every frame.
+            }
+        }
+
+        private static bool IsHotkeyPressed(KeyboardShortcut shortcut)
+        {
+            if (!Input.GetKeyDown(shortcut.MainKey)) return false;
+            foreach (var modifier in shortcut.Modifiers)
+            {
+                if (!Input.GetKey(modifier)) return false;
+            }
+            return true;
         }
     }
 }
