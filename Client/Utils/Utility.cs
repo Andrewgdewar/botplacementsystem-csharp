@@ -147,6 +147,12 @@ namespace acidphantasm_botplacementsystem.Utils
                     {
                         continue;
                     }
+                    // Skip sniper zone points: they're far from typical play areas (rooftops,
+                    // ridgelines, etc) and scavs spawning there feels "all over the map".
+                    if (spawnPoint.IsSnipeZone)
+                    {
+                        continue;
+                    }
                     AllBotSpawnPoints.Add(spawnPoint);
                     SpawnPointToZone[spawnPoint.Id] = botZone;
                 }

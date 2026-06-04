@@ -82,24 +82,26 @@ namespace acidphantasm_botplacementsystem.Patches
             var allPoints = Utility.AllBotSpawnPoints;
             if (allPoints.Count == 0) return null;
 
+            // Wait for the first human player to load before letting scavs spawn.
+            // Without a reference position we'd fall back to random-across-the-map,
+            // which produces the "scavs splatter everywhere" feel at raid start.
+            // Scav waves keep ticking, they just no-op until the player is cached.
+            if (!Utility.CurrentPlayerPosition.HasValue)
+            {
+                if (Plugin.DebugLogging)
+                    Plugin.LogSource.LogInfo("[ABPS] Scav spawn deferred: no player position yet");
+                return null;
+            }
+
             // Re-sort only when the player position snapshot changes. Between updates
             // (typically 120s apart) the scoring is stable, so we reuse the cached order.
             var currentVersion = Utility.PositionSnapshotVersion;
             if (currentVersion != _cachedScavSortVersion || _cachedScavSorted.Count != allPoints.Count)
             {
-                if (Utility.CurrentPlayerPosition.HasValue)
-                {
-                    var playerPos = Utility.CurrentPlayerPosition.Value;
-                    _cachedScavSorted = allPoints
-                        .OrderBy(sp => Utility.GetDirectionalScore(sp.Position, playerPos, Plugin.ScavSpawnNoise))
-                        .ToList();
-                }
-                else
-                {
-                    _cachedScavSorted = allPoints
-                        .OrderBy(_ => GClass856.Random(0f, 1f))
-                        .ToList();
-                }
+                var playerPos = Utility.CurrentPlayerPosition.Value;
+                _cachedScavSorted = allPoints
+                    .OrderBy(sp => Utility.GetDirectionalScore(sp.Position, playerPos, Plugin.ScavSpawnNoise))
+                    .ToList();
                 _cachedScavSortVersion = currentVersion;
             }
 

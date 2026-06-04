@@ -70,36 +70,6 @@ namespace acidphantasm_botplacementsystem.Patches
             return true;
         }
 
-        /// <summary>
-        /// Roll a group size (in addition to the leader) from the configured
-        /// Plugin.PmcWaveGroupSizeWeights array. Index 0 = solo, 1 = 2-man, etc.
-        /// Result is clamped to remaining cap.
-        /// </summary>
-        private static int RollExtraGroupMembers(int maxPmcs, int leaderCount)
-        {
-            var weights = Plugin.PmcWaveGroupSizeWeights;
-            if (weights == null || weights.Length == 0) return 0;
-
-            var total = 0;
-            for (var i = 0; i < weights.Length; i++) total += Math.Max(0, weights[i]);
-            if (total <= 0) return 0;
-
-            var roll = UnityEngine.Random.Range(0, total);
-            var pick = 0;
-            for (var i = 0; i < weights.Length; i++)
-            {
-                var w = Math.Max(0, weights[i]);
-                if (roll < w) { pick = i; break; }
-                roll -= w;
-            }
-            // pick = index in weights = group total (0 = solo, 1 = 2-man, ...). Extras = pick.
-            if (pick <= 0) return 0;
-
-            // Clamp to remaining cap so a 4-man roll doesn't overshoot.
-            var remaining = maxPmcs - Utility.PmcsSpawnedThisRaid - leaderCount;
-            return Math.Max(0, Math.Min(pick, remaining));
-        }
-
         protected override MethodBase GetTargetMethod()
         {
             return AccessTools.Method(typeof(BossSpawnerClass), nameof(BossSpawnerClass.method_2));
@@ -134,20 +104,9 @@ namespace acidphantasm_botplacementsystem.Patches
                     return false;
                 }
 
-                // Group roll (wave PMCs only). Server ships every wave as a solo
-                // (EscortCount=0); upgrade it here per the weighted distribution.
-                // Starting PMCs (Time=1) keep their server-configured group size.
-                if (wave.Time > 1 && maxPmcs > 0)
-                {
-                    var extras = RollExtraGroupMembers(maxPmcs, 1);
-                    if (extras > 0)
-                    {
-                        wave.EscortCount = extras;
-                        if (Plugin.DebugLogging)
-                            Logger.LogInfo($"[ABPS] PMC group rolled: leader + {extras} extras");
-                    }
-                }
-
+                // Group size is decided entirely server-side via wave.EscortCount; we
+                // only gate / cap here. Mutating EscortCount client-side doesn't work
+                // because creationData.Profiles is already populated before this patch.
                 var escortPointCount = 1 + wave.EscortCount;
 
                 // Runtime hard cap: skip this wave if it would push us past the per-map total.

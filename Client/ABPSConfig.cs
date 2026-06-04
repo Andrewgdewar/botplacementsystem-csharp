@@ -1,7 +1,5 @@
 using BepInEx.Configuration;
 using System;
-using System.Collections.Generic;
-using System.Linq;
 
 namespace acidphantasm_botplacementsystem
 {
@@ -113,7 +111,6 @@ namespace acidphantasm_botplacementsystem
         private static ConfigEntry<float> _pmcScheduleMidTimePercent;
         private static ConfigEntry<float> _pmcScheduleMidBudgetPercent;
         private static ConfigEntry<float> _pmcScheduleFullPercent;
-        private static ConfigEntry<string> _pmcWaveGroupSizeWeights;
 
         private static ConfigEntry<int> BindMaxPmc(ConfigFile config, string label, int defaultValue, string description)
         {
@@ -757,7 +754,7 @@ namespace acidphantasm_botplacementsystem
             _shufflePercent = config.Bind(
                 GeneralConfig,
                 "Shuffle Percent",
-                0.6f,
+                0.5f,
                 new ConfigDescription("What portion of the ahead-sorted spawn list gets loosely shuffled. 0.5 = top 50%, 1.0 = entire list.",
                     new AcceptableValueRange<float>(0f, 1f),
                     new ConfigurationManagerAttributes { Order = _loadOrder-- }));
@@ -767,7 +764,7 @@ namespace acidphantasm_botplacementsystem
             _shuffleStep = config.Bind(
                 GeneralConfig,
                 "Shuffle Step",
-                2,
+                3,
                 new ConfigDescription("Every Nth element in the shuffle zone gets swapped with a random element from outside it. Lower = more shuffling.",
                     new AcceptableValueRange<int>(2, 10),
                     new ConfigurationManagerAttributes { Order = _loadOrder-- }));
@@ -914,42 +911,8 @@ namespace acidphantasm_botplacementsystem
                     new ConfigurationManagerAttributes { Order = _loadOrder-- }));
             Plugin.PmcScheduleFullPercent = _pmcScheduleFullPercent.Value;
             _pmcScheduleFullPercent.SettingChanged += ABPS_SettingChanged;
-
-            _pmcWaveGroupSizeWeights = config.Bind(
-                GeneralConfig,
-                "PMC Wave Group Size Weights",
-                "60,20,10,5,5",
-                new ConfigDescription("Comma-separated weights for PMC wave group sizes. Index 0 = solo, 1 = 2-man, 2 = 3-man, 3 = 4-man, 4 = 5-man. Higher = more common. Example: '60,20,10,5,5' = 60pct solo, 20pct duo, 10pct trio, 5pct each for 4 and 5.",
-                    null,
-                    new ConfigurationManagerAttributes { Order = _loadOrder-- }));
-            ParseAndApplyPmcGroupWeights(_pmcWaveGroupSizeWeights.Value);
-            _pmcWaveGroupSizeWeights.SettingChanged += ABPS_SettingChanged;
         }
 
-        private static void ParseAndApplyPmcGroupWeights(string raw)
-        {
-            try
-            {
-                var parts = (raw ?? "").Split(',');
-                var weights = new List<int>();
-                foreach (var part in parts)
-                {
-                    if (int.TryParse(part.Trim(), out var w) && w >= 0)
-                        weights.Add(w);
-                }
-                if (weights.Count == 0 || weights.Sum() == 0)
-                {
-                    Plugin.LogSource.LogWarning($"[ABPS] PMC Wave Group Size Weights invalid ('{raw}'), using defaults 60,20,10,5,5");
-                    Plugin.PmcWaveGroupSizeWeights = new[] { 60, 20, 10, 5, 5 };
-                    return;
-                }
-                Plugin.PmcWaveGroupSizeWeights = weights.ToArray();
-            }
-            catch
-            {
-                Plugin.PmcWaveGroupSizeWeights = new[] { 60, 20, 10, 5, 5 };
-            }
-        }
         private static void ABPS_SettingChanged(object sender, EventArgs e)
         {
             Plugin.DespawnFurthest = _despawnFurthest.Value;
@@ -1048,7 +1011,6 @@ namespace acidphantasm_botplacementsystem
             Plugin.PmcScheduleMidTimePercent = _pmcScheduleMidTimePercent.Value;
             Plugin.PmcScheduleMidBudgetPercent = _pmcScheduleMidBudgetPercent.Value;
             Plugin.PmcScheduleFullPercent = _pmcScheduleFullPercent.Value;
-            ParseAndApplyPmcGroupWeights(_pmcWaveGroupSizeWeights.Value);
         }
     }
 }
