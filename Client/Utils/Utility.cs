@@ -289,21 +289,24 @@ namespace acidphantasm_botplacementsystem.Utils
         }
         
         /// <summary>
-        /// Loosely shuffles the first portion of a sorted list.
-        /// Every Nth element in the shuffle zone gets swapped with a random element
-        /// from outside the zone. Preserves general ordering while adding variety.
+        /// Loosely shuffles the first portion of a sorted list by swapping each Nth
+        /// element with one a short distance further down the list (within a local
+        /// window, NOT with the far half). Preserves distance ordering while adding
+        /// variety inside the close-distance band.
         /// </summary>
         public static void LooselyShuffle<T>(List<T> list, float shufflePercent, int shuffleStep)
         {
             if (list.Count < 4 || shufflePercent <= 0f || shuffleStep < 2) return;
-            
+
             var shuffleZone = Mathf.Max(2, Mathf.FloorToInt(list.Count * shufflePercent));
-            var remaining = list.Count - shuffleZone;
-            if (remaining < 1) return;
-            
+            // Window = small fraction of the zone; swaps stay local so far-half points
+            // never end up at the front of the sorted list (which would defeat the
+            // distance sort and cause "scavs spawning across the map first").
+            var window = Mathf.Max(2, shuffleZone / 4);
+
             for (var i = shuffleStep - 1; i < shuffleZone; i += shuffleStep)
             {
-                var swapIndex = shuffleZone + UnityEngine.Random.Range(0, remaining);
+                var swapIndex = Mathf.Min(list.Count - 1, i + UnityEngine.Random.Range(1, window + 1));
                 (list[i], list[swapIndex]) = (list[swapIndex], list[i]);
             }
         }
