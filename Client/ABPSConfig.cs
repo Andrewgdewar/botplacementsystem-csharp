@@ -97,6 +97,7 @@ namespace acidphantasm_botplacementsystem
         private static ConfigEntry<float> _directionalBias;
         private static ConfigEntry<float> _shufflePercent;
         private static ConfigEntry<int> _shuffleStep;
+        private static ConfigEntry<float> _pickBiasPower;
         private static ConfigEntry<float> _scavSpawnNoise;
         private static ConfigEntry<float> _pmcSpawnNoise;
         private static ConfigEntry<float> _pmcSkipClosestPercent;
@@ -771,6 +772,16 @@ namespace acidphantasm_botplacementsystem
             Plugin.ShuffleStep = _shuffleStep.Value;
             _shuffleStep.SettingChanged += ABPS_SettingChanged;
 
+            _pickBiasPower = config.Bind(
+                GeneralConfig,
+                "Pick Bias Power",
+                1.6f,
+                new ConfigDescription("Steepness of the scav weighted pick. 0 = uniform random across the top 80 candidates. 1.0 = moderate close-bias. 1.6 = strong (recommended). 2.5 = very strong, almost always closest. 3.0+ = near-deterministic closest.",
+                    new AcceptableValueRange<float>(0f, 3f),
+                    new ConfigurationManagerAttributes { Order = _loadOrder-- }));
+            Plugin.PickBiasPower = _pickBiasPower.Value;
+            _pickBiasPower.SettingChanged += ABPS_SettingChanged;
+
             _scavSpawnNoise = config.Bind(
                 GeneralConfig,
                 "Scav Spawn Noise",
@@ -996,6 +1007,7 @@ namespace acidphantasm_botplacementsystem
             Plugin.DirectionalBias = _directionalBias.Value;
             Plugin.ShufflePercent = _shufflePercent.Value;
             Plugin.ShuffleStep = _shuffleStep.Value;
+            Plugin.PickBiasPower = _pickBiasPower.Value;
             Plugin.ScavSpawnNoise = _scavSpawnNoise.Value;
             Plugin.PmcSpawnNoise = _pmcSpawnNoise.Value;
             Plugin.PmcSkipClosestPercent = _pmcSkipClosestPercent.Value;

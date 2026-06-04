@@ -169,9 +169,10 @@ namespace acidphantasm_botplacementsystem.Utils
         
         /// <summary>
         /// Scores a spawn point based on distance, direction of travel, and noise.
-        /// Cosine-weighted directional bias: 0° favored (cos=1), 90° neutral (cos=0),
-        /// 180° (behind) penalised (cos=-1). Sides stay competitive on raw distance,
-        /// ahead spawns get a discount, behind spawns get a markup.
+        /// Directional bias is applied only in a ~90° cone in front of the player
+        /// (anything within 45° of forward). Points outside the front cone but not
+        /// behind are neutral (no bonus, no penalty). Points behind the player are
+        /// penalised by the full bias amount.
         /// Falls back to distance + noise when no travel direction is established.
         /// Points inside a hotzone receive a score multiplier (HotzoneScoreMultiplier)
         /// to favor them, restoring the hotzone preference that was lost when the
@@ -179,6 +180,7 @@ namespace acidphantasm_botplacementsystem.Utils
         /// </summary>
         public static float GetDirectionalScore(Vector3 spawnPoint, Vector3 playerPos, float noiseAmount)
         {
+            const float FrontConeCosThreshold = 0.707f; // cos(45°)
             var distance = Vector3.Distance(spawnPoint, playerPos);
             var noise = noiseAmount > 0f ? UnityEngine.Random.Range(0f, noiseAmount) : 0f;
             float score;
@@ -197,9 +199,16 @@ namespace acidphantasm_botplacementsystem.Utils
                 else
                 {
                     var dot = Vector3.Dot(offset.normalized, TravelDirection.Value);
-                    // dot: 1.0 = ahead, 0 = side, -1 = behind.
-                    // multiplier: ahead = 1-bias (cheap), side = 1.0 (neutral), behind = 1+bias (expensive).
-                    var directionalMultiplier = 1.0f - (dot * Plugin.DirectionalBias);
+                    // Front cone (within 45° of forward): full bonus scaled by dot.
+                    // Behind (dot < 0): full penalty scaled by -dot.
+                    // Side (0 <= dot < 0.707): neutral, no adjustment.
+                    float directionalMultiplier;
+                    if (dot >= FrontConeCosThreshold)
+                        directionalMultiplier = 1.0f - (dot * Plugin.DirectionalBias);
+                    else if (dot < 0f)
+                        directionalMultiplier = 1.0f - (dot * Plugin.DirectionalBias); // penalty: 1 + |dot|*bias
+                    else
+                        directionalMultiplier = 1.0f; // side neutral
                     score = distance * directionalMultiplier + noise;
                 }
             }
@@ -289,24 +298,24 @@ namespace acidphantasm_botplacementsystem.Utils
         }
         
         /// <summary>
-        /// Loosely shuffles the first portion of a sorted list by swapping each Nth
-        /// element with one a short distance further down the list (within a local
-        /// window, NOT with the far half). Preserves distance ordering while adding
-        /// variety inside the close-distance band.
+        /// Loosely shuffles the close half of a sorted list by swapping each Nth
+        /// element in the FIRST half of the shuffle zone with a random element in
+        /// the SECOND half of the same zone. Variety stays inside the close-distance
+        /// band; the far half of the full list never bubbles to the front.
         /// </summary>
         public static void LooselyShuffle<T>(List<T> list, float shufflePercent, int shuffleStep)
         {
             if (list.Count < 4 || shufflePercent <= 0f || shuffleStep < 2) return;
 
             var shuffleZone = Mathf.Max(2, Mathf.FloorToInt(list.Count * shufflePercent));
-            // Window = small fraction of the zone; swaps stay local so far-half points
-            // never end up at the front of the sorted list (which would defeat the
-            // distance sort and cause "scavs spawning across the map first").
-            var window = Mathf.Max(2, shuffleZone / 4);
+            var halfZone = shuffleZone / 2;
+            if (halfZone < 1) return;
+            var secondHalfStart = halfZone;
+            var secondHalfLen = shuffleZone - halfZone;
 
-            for (var i = shuffleStep - 1; i < shuffleZone; i += shuffleStep)
+            for (var i = shuffleStep - 1; i < halfZone; i += shuffleStep)
             {
-                var swapIndex = Mathf.Min(list.Count - 1, i + UnityEngine.Random.Range(1, window + 1));
+                var swapIndex = secondHalfStart + UnityEngine.Random.Range(0, secondHalfLen);
                 (list[i], list[swapIndex]) = (list[swapIndex], list[i]);
             }
         }
