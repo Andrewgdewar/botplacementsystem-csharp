@@ -86,12 +86,12 @@ namespace acidphantasm_botplacementsystem.Patches
                 {
                     return false;
                 }
-                spawnAttemptInterval = 15f;
+                spawnAttemptInterval = 5f;
                 isAtBotCap = false;
             }
             else if (freeSlots <= 0)
             {
-                spawnAttemptInterval = Math.Max((float)___location_0.BotSpawnPeriodCheck, 15f);
+                spawnAttemptInterval = Math.Max((float)___location_0.BotSpawnPeriodCheck, 5f);
                 isAtBotCap = ___botsController_0.MaxCount - ___botsController_0.AliveAndLoadingBotsCount <= 0;
                 return false;
             }

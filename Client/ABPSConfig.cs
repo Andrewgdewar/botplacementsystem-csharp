@@ -813,8 +813,8 @@ namespace acidphantasm_botplacementsystem
             _pickBiasPower = config.Bind(
                 GeneralConfig,
                 "Pick Bias Power",
-                1.6f,
-                new ConfigDescription("Steepness of the scav weighted pick. 0 = uniform random across the top 80 candidates. 1.0 = moderate close-bias. 1.6 = strong (recommended). 2.5 = very strong, almost always closest. 3.0+ = near-deterministic closest.",
+                0.8f,
+                new ConfigDescription("Steepness of the scav weighted pick. 0 = uniform random across the top 80 candidates. 0.6 = spread (recommended). 1.0 = moderate close-bias. 1.6 = strong. 2.5+ = almost always closest.",
                     new AcceptableValueRange<float>(0f, 3f),
                     new ConfigurationManagerAttributes { Order = _loadOrder-- }));
             Plugin.PickBiasPower = _pickBiasPower.Value;
@@ -823,8 +823,8 @@ namespace acidphantasm_botplacementsystem
             _pickBiasOffset = config.Bind(
                 GeneralConfig,
                 "Pick Bias Offset",
-                1f,
-                new ConfigDescription("Flattens the top of the scav weighted pick curve. 1 = sharp peak at closest (default). 5 = first 5 candidates similarly likely. 10 = first 10 similarly likely. Higher offset = less front-bias, more spread amongst near-by candidates.",
+                10f,
+                new ConfigDescription("Flattens the top of the scav weighted pick curve. 1 = sharp peak at closest. 5 = first 5 candidates similarly likely. 10 = first 10 similarly likely (recommended). Higher offset = less front-bias, more spread amongst near-by candidates.",
                     new AcceptableValueRange<float>(1f, 20f),
                     new ConfigurationManagerAttributes { Order = _loadOrder-- }));
             Plugin.PickBiasOffset = _pickBiasOffset.Value;
@@ -913,7 +913,7 @@ namespace acidphantasm_botplacementsystem
             _scavScheduleMidBudgetPercent = config.Bind(
                 GeneralConfig,
                 "Scav Schedule Mid Budget Pct",
-                0.50f,
+                0.70f,
                 new ConfigDescription("Fraction of the per-player scav budget unlocked at the mid time point. Should be > Start, < 1.0.",
                     new AcceptableValueRange<float>(0f, 1f),
                     new ConfigurationManagerAttributes { Order = _loadOrder-- }));
