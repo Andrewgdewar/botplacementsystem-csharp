@@ -78,7 +78,7 @@
       "maxGroupSize": 2,
       "maxGroupCount": 3,
       "maxBotsPerWave": 4,
-      "delayBeforeFirstWave": 500,
+      "delayBeforeFirstWave": 30,
       "secondsBetweenWaves": 360,
       "stopWavesBeforeEndOfRaidLimit": 300
     }
