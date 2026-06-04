@@ -17,52 +17,52 @@
       "maxGroupCount": 4,
       "mapLimits": {
         "bigmap": {
-          "min": 8,
-          "max": 10
+          "min": 1,
+          "max": 2
         },
         "factory4_day": {
-          "min": 5,
-          "max": 7
+          "min": 1,
+          "max": 2
         },
         "factory4_night": {
-          "min": 5,
-          "max": 7
+          "min": 1,
+          "max": 2
         },
         "interchange": {
-          "min": 9,
-          "max": 13
+          "min": 1,
+          "max": 2
         },
         "laboratory": {
-          "min": 7,
-          "max": 9
+          "min": 1,
+          "max": 2
         },
         "lighthouse": {
-          "min": 7,
-          "max": 10
+          "min": 1,
+          "max": 2
         },
         "rezervbase": {
-          "min": 8,
-          "max": 10
+          "min": 1,
+          "max": 2
         },
         "sandbox": {
-          "min": 8,
-          "max": 11
+          "min": 1,
+          "max": 2
         },
         "sandbox_high": {
-          "min": 8,
-          "max": 11
+          "min": 1,
+          "max": 2
         },
         "shoreline": {
-          "min": 9,
-          "max": 13
+          "min": 1,
+          "max": 2
         },
         "tarkovstreets": {
-          "min": 7,
-          "max": 10
+          "min": 1,
+          "max": 2
         },
         "woods": {
-          "min": 9,
-          "max": 13
+          "min": 1,
+          "max": 2
         },
         "labyrinth": {
           "min": 0,
@@ -71,14 +71,14 @@
       }
     },
     "waves": {
-      "enable": false,
+      "enable": true,
       "allowPmcsOnLabyrinth": false,
-      "ignoreMaxBotCaps": false,
-      "groupChance": 10,
-      "maxGroupSize": 1,
+      "ignoreMaxBotCaps": true,
+      "groupChance": 20,
+      "maxGroupSize": 2,
       "maxGroupCount": 3,
       "maxBotsPerWave": 4,
-      "delayBeforeFirstWave": 500,
+      "delayBeforeFirstWave": 30,
       "secondsBetweenWaves": 360,
       "stopWavesBeforeEndOfRaidLimit": 300
     }

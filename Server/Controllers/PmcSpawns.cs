@@ -31,8 +31,10 @@ public class PmcSpawns(
             pmcSpawnInfo.AddRange(GenerateStartingPmcWaves(location));
         }
 
-        var canGenerateWaves = ModConfig.Config.PmcConfig.Waves.Enable && (location != "labyrinth" || ModConfig.Config.PmcConfig.Waves.AllowPmcsOnLabyrinth);
-        if (canGenerateWaves)
+        // Generous wave schedule. The client gates how many actually spawn via the
+        // per-map MaxPmcs cap + PMC schedule curve (see PmcSpawnHookPatch). Any wave
+        // over the curve at fire time is silently rejected.
+        if (ModConfig.Config.PmcConfig.Waves.Enable && (location != "labyrinth" || ModConfig.Config.PmcConfig.Waves.AllowPmcsOnLabyrinth))
         {
             pmcSpawnInfo.AddRange(GeneratePmcWaves(location, escapeTimeLimit));
         }
@@ -40,61 +42,53 @@ public class PmcSpawns(
         return pmcSpawnInfo;
     }
 
+    /// <summary>
+    /// Generates one PMC wave per minute for the entire raid (after firstWaveTimer
+    /// until BotStop - stopWavesBeforeEndOfRaidLimit). Each wave is a solo PMC by
+    /// default; client decides which fire vs reject based on its schedule curve and
+    /// per-map cap. The schedule is intentionally generous so the curve has plenty
+    /// of opportunities to release a spawn at its target rate.
+    /// </summary>
     private List<BossLocationSpawn> GeneratePmcWaves(string location, double escapeTimeLimit)
     {
         var pmcWaveSpawnInfo = new List<BossLocationSpawn>();
         var ignoreMaxBotCaps = ModConfig.Config.PmcConfig.Waves.IgnoreMaxBotCaps;
         var difficultyWeights = ModConfig.Config.PmcDifficulty;
-        var waveMaxPmcCount = location.Contains("factory") || location.Contains("labyrinth") ? Math.Min(2, ModConfig.Config.PmcConfig.Waves.MaxBotsPerWave - 2) : ModConfig.Config.PmcConfig.Waves.MaxBotsPerWave;
-        var waveGroupLimit = ModConfig.Config.PmcConfig.Waves.MaxGroupCount;
-        var waveGroupSize = ModConfig.Config.PmcConfig.Waves.MaxGroupSize;
-        var waveGroupChance = ModConfig.Config.PmcConfig.Waves.GroupChance;
         var firstWaveTimer = ModConfig.Config.PmcConfig.Waves.DelayBeforeFirstWave;
-        var waveTimer = ModConfig.Config.PmcConfig.Waves.SecondsBetweenWaves;
-        var endWavesAtRemainingTime = ModConfig.Config.PmcConfig.Waves.StopWavesBeforeEndOfRaidLimit;
-        var spawnStaggerMin = 5;
-        var spawnStaggerMax = 15;
-        var waveCount = Math.Floor((double) (((escapeTimeLimit * 60) - endWavesAtRemainingTime) - firstWaveTimer) / waveTimer);
-        var currentWaveTime = firstWaveTimer;
-        
-        for (var i = 1; i <= waveCount; i++)
+        var stopBeforeEndOfRaid = ModConfig.Config.PmcConfig.Waves.StopWavesBeforeEndOfRaidLimit;
+
+        var raidSeconds = escapeTimeLimit * 60;
+        var endTime = raidSeconds - stopBeforeEndOfRaid;
+        if (endTime <= firstWaveTimer)
         {
-            var currentPmcCount = 0;
-            var groupCount = 0;
-            var currentSpawnOffset = 0d;
-            
-            while (currentPmcCount < waveMaxPmcCount)
-            {
-                var canBeAGroup = groupCount < waveGroupLimit;
-                var groupSize = 0;
-                var remainingSpots = waveMaxPmcCount - currentPmcCount;
-                var isAGroup = remainingSpots > 1 && randomUtil.GetChance100(waveGroupChance);
-                if (isAGroup && canBeAGroup) 
-                {
-                    groupSize = Math.Min(remainingSpots - 1, randomUtil.GetInt(1, waveGroupSize));
-                    groupCount++;
-                }
-
-                var pmcType = randomUtil.GetChance100(ModConfig.Config.PmcType.UsecChance) ? "pmcUSEC" : "pmcBEAR";
-                var bossDefaultData = cloner.Clone(GetDefaultValuesForBoss(pmcType));
-
-                if (bossDefaultData is null) continue;
-                
-                bossDefaultData[0].BossEscortAmount = groupSize.ToString();
-                bossDefaultData[0].Time = currentWaveTime + currentSpawnOffset;
-                bossDefaultData[0].BossDifficulty = weightedRandomHelper.GetWeightedValue(difficultyWeights);
-                bossDefaultData[0].BossEscortDifficulty = weightedRandomHelper.GetWeightedValue(difficultyWeights);
-                bossDefaultData[0].BossZone = "";
-                bossDefaultData[0].IgnoreMaxBots = ignoreMaxBotCaps;
-                currentPmcCount += groupSize + 1;
-                pmcWaveSpawnInfo.Add(bossDefaultData[0]);
-                
-                currentSpawnOffset += randomUtil.GetInt(spawnStaggerMin, spawnStaggerMax);
-            }
-            
-            currentWaveTime += waveTimer;
+            logger.Info($"[ABPS] {location}: skipping PMC schedule (window {firstWaveTimer:0}s-{endTime:0}s invalid)");
+            return pmcWaveSpawnInfo;
         }
 
+        // One wave per minute, evenly spaced across the active window.
+        const int intervalSeconds = 60;
+        var currentTime = (double)firstWaveTimer;
+        var totalScheduled = 0;
+
+        while (currentTime <= endTime)
+        {
+            var pmcType = randomUtil.GetChance100(ModConfig.Config.PmcType.UsecChance) ? "pmcUSEC" : "pmcBEAR";
+            var bossDefaultData = cloner.Clone(GetDefaultValuesForBoss(pmcType));
+            if (bossDefaultData is null) { currentTime += intervalSeconds; continue; }
+
+            bossDefaultData[0].BossEscortAmount = "0"; // solo by default; client could be extended to group later
+            bossDefaultData[0].Time = currentTime;
+            bossDefaultData[0].BossDifficulty = weightedRandomHelper.GetWeightedValue(difficultyWeights);
+            bossDefaultData[0].BossEscortDifficulty = weightedRandomHelper.GetWeightedValue(difficultyWeights);
+            bossDefaultData[0].BossZone = "";
+            bossDefaultData[0].IgnoreMaxBots = ignoreMaxBotCaps;
+            pmcWaveSpawnInfo.Add(bossDefaultData[0]);
+
+            totalScheduled++;
+            currentTime += intervalSeconds;
+        }
+
+        logger.Info($"[ABPS] {location}: scheduled {totalScheduled} candidate PMC waves (1/min from {firstWaveTimer}s to {endTime:0}s); client cap+curve decides which fire");
         return pmcWaveSpawnInfo;
     }
 

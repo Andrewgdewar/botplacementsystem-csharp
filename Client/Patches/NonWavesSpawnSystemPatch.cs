@@ -1,4 +1,4 @@
-﻿using acidphantasm_botplacementsystem.Utils;
+using acidphantasm_botplacementsystem.Utils;
 using EFT;
 using EFT.Game.Spawning;
 using HarmonyLib;
@@ -49,8 +49,15 @@ namespace acidphantasm_botplacementsystem.Patches
 
             if (__instance == null || !isActive) return true;
 
+            // Periodically update spawn reference position as player moves
+            Utility.TryUpdatePlayerPosition();
+
             if (___abstractGame_0.PastTime < (float)___location_0.BotStart || ___abstractGame_0.PastTime > (float)___location_0.BotStop)
                 return false;
+
+            // Cache the raid bot window for other patches that don't get this struct.
+            Utility.RaidBotStart = (float)___location_0.BotStart;
+            Utility.RaidBotStop = (float)___location_0.BotStop;
 
             if (nextWindowToggleTime.Equals(null) || nextWindowToggleTime <= ___abstractGame_0.PastTime)
             {
@@ -89,9 +96,55 @@ namespace acidphantasm_botplacementsystem.Patches
                 return false;
             }
             
-            if (Utility.BotsSpawnedPerPlayer >= ___botsController_0.BotLocationModifier.NonWaveSpawnBotsLimitPerPlayerPvE)
+            // Per-map per-player total scav budget (configurable, defaults sized per map).
+            // Scaled at spawn time by PerPlayerScavMultiplier.
+            var mapNameForBudget = (Utility.CurrentLocation ?? "default").ToLower();
+            var perPlayerBudget = Utility.GetMaxScavsForMap(mapNameForBudget);
+            // Fall back to vanilla per-player cap if no per-map config (eg unrecognized map).
+            if (perPlayerBudget <= 0)
+                perPlayerBudget = ___botsController_0.BotLocationModifier.NonWaveSpawnBotsLimitPerPlayerPvE;
+
+            if (Utility.BotsSpawnedPerPlayer >= perPlayerBudget)
             {
                 return false;
+            }
+
+            // Schedule gate: cap the per-player budget based on raid progress so scavs
+            // spawn steadily throughout the raid instead of all in the first window.
+            // Piecewise linear: (0%, Start), (MidTime, MidBudget), (FullTime, 100%).
+            var budgetCap = (double)perPlayerBudget;
+            var botStart = (float)___location_0.BotStart;
+            var botStop = (float)___location_0.BotStop;
+            if (botStop > botStart && budgetCap > 0)
+            {
+                var elapsedFrac = Math.Min(1.0, Math.Max(0.0, (___abstractGame_0.PastTime - botStart) / (botStop - botStart)));
+                var startBudget = Plugin.ScavScheduleStartPercent;
+                var midTime = Plugin.ScavScheduleMidTimePercent;
+                var midBudget = Plugin.ScavScheduleMidBudgetPercent;
+                var fullTime = Plugin.ScavScheduleFullPercent;
+
+                double allowedFrac;
+                if (elapsedFrac >= fullTime)
+                {
+                    allowedFrac = 1.0;
+                }
+                else if (elapsedFrac <= midTime)
+                {
+                    // Lerp from startBudget at 0 to midBudget at midTime.
+                    var segment = midTime > 0 ? elapsedFrac / midTime : 1.0;
+                    allowedFrac = startBudget + (midBudget - startBudget) * segment;
+                }
+                else
+                {
+                    // Lerp from midBudget at midTime to 1.0 at fullTime.
+                    var segment = (elapsedFrac - midTime) / Math.Max(0.0001, fullTime - midTime);
+                    allowedFrac = midBudget + (1.0 - midBudget) * segment;
+                }
+
+                if (Utility.BotsSpawnedPerPlayer >= budgetCap * allowedFrac)
+                {
+                    return false;
+                }
             }
             
             var mapName = Utility.CurrentLocation.ToLower();
@@ -113,7 +166,7 @@ namespace acidphantasm_botplacementsystem.Patches
                 WithCheckMinMax = false,
                 ChanceGroup = 0,
             });
-            Utility.BotsSpawnedPerPlayer += 1d / Math.Max(1, Utility.CachedConnectedPlayers.Count);
+            Utility.BotsSpawnedPerPlayer += 1d / Math.Max(1d, 1d + Plugin.PerPlayerScavMultiplier * Math.Max(0, Utility.CachedConnectedPlayers.Count - 1));
 
             if (!(Time.time >= _nextDespawnCheckTime) || !Plugin.DespawnFurthest)
             {

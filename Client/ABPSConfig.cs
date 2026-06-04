@@ -1,4 +1,4 @@
-﻿using BepInEx.Configuration;
+using BepInEx.Configuration;
 using System;
 
 namespace acidphantasm_botplacementsystem
@@ -25,6 +25,32 @@ namespace acidphantasm_botplacementsystem
         private static ConfigEntry<int> _streetsMapLimit;
         private static ConfigEntry<int> _woodsMapLimit;
         private static ConfigEntry<int> _labyrinthMapLimit;
+
+        private static ConfigEntry<int> _customsMaxPmcs;
+        private static ConfigEntry<int> _factoryMaxPmcs;
+        private static ConfigEntry<int> _interchangeMaxPmcs;
+        private static ConfigEntry<int> _labsMaxPmcs;
+        private static ConfigEntry<int> _lighthouseMaxPmcs;
+        private static ConfigEntry<int> _reserveMaxPmcs;
+        private static ConfigEntry<int> _groundZeroMaxPmcs;
+        private static ConfigEntry<int> _groundZeroHighMaxPmcs;
+        private static ConfigEntry<int> _shorelineMaxPmcs;
+        private static ConfigEntry<int> _streetsMaxPmcs;
+        private static ConfigEntry<int> _woodsMaxPmcs;
+        private static ConfigEntry<int> _labyrinthMaxPmcs;
+
+        private static ConfigEntry<int> _customsMaxScavs;
+        private static ConfigEntry<int> _factoryMaxScavs;
+        private static ConfigEntry<int> _interchangeMaxScavs;
+        private static ConfigEntry<int> _labsMaxScavs;
+        private static ConfigEntry<int> _lighthouseMaxScavs;
+        private static ConfigEntry<int> _reserveMaxScavs;
+        private static ConfigEntry<int> _groundZeroMaxScavs;
+        private static ConfigEntry<int> _groundZeroHighMaxScavs;
+        private static ConfigEntry<int> _shorelineMaxScavs;
+        private static ConfigEntry<int> _streetsMaxScavs;
+        private static ConfigEntry<int> _woodsMaxScavs;
+        private static ConfigEntry<int> _labyrinthMaxScavs;
         
         private const string BossConfig = "3. Boss Settings";
         private static ConfigEntry<bool> _regressiveChances;
@@ -68,6 +94,47 @@ namespace acidphantasm_botplacementsystem
         
         private const string DebugConfig = "6. Debug Settings";
         private static ConfigEntry<bool> _enableDebug;
+        private static ConfigEntry<float> _directionalBias;
+        private static ConfigEntry<float> _shufflePercent;
+        private static ConfigEntry<int> _shuffleStep;
+        private static ConfigEntry<float> _pickBiasPower;
+        private static ConfigEntry<float> _pickBiasOffset;
+        private static ConfigEntry<float> _scavSpawnNoise;
+        private static ConfigEntry<float> _pmcSpawnNoise;
+        private static ConfigEntry<float> _pmcSkipClosestPercent;
+        private static ConfigEntry<float> _scavSkipClosestPercent;
+        private static ConfigEntry<float> _perPlayerScavMultiplier;
+        private static ConfigEntry<float> _hotzoneScoreMultiplier;
+        private static ConfigEntry<float> _scavScheduleStartPercent;
+        private static ConfigEntry<float> _scavScheduleMidTimePercent;
+        private static ConfigEntry<float> _scavScheduleMidBudgetPercent;
+        private static ConfigEntry<float> _scavScheduleFullPercent;
+        private static ConfigEntry<float> _pmcScheduleStartPercent;
+        private static ConfigEntry<float> _pmcScheduleMidTimePercent;
+        private static ConfigEntry<float> _pmcScheduleMidBudgetPercent;
+        private static ConfigEntry<float> _pmcScheduleFullPercent;
+
+        private static ConfigEntry<int> BindMaxPmc(ConfigFile config, string label, int defaultValue, string description)
+        {
+            return config.Bind(
+                GeneralConfig,
+                label,
+                defaultValue,
+                new ConfigDescription(description,
+                    new AcceptableValueRange<int>(0, 50),
+                    new ConfigurationManagerAttributes { Order = _loadOrder-- }));
+        }
+
+        private static ConfigEntry<int> BindMaxScav(ConfigFile config, string label, int defaultValue, string description)
+        {
+            return config.Bind(
+                GeneralConfig,
+                label,
+                defaultValue,
+                new ConfigDescription(description,
+                    new AcceptableValueRange<int>(0, 100),
+                    new ConfigurationManagerAttributes { Order = _loadOrder-- }));
+        }
 
         public static void InitAbpsConfig(ConfigFile config)
         {
@@ -222,6 +289,109 @@ namespace acidphantasm_botplacementsystem
                 new ConfigurationManagerAttributes { Order = _loadOrder-- }));
             Plugin.LabyrinthMapLimit = _labyrinthMapLimit.Value;
             _labyrinthMapLimit.SettingChanged += ABPS_SettingChanged;
+
+            // Per-map runtime hard caps for PMC count (server schedules waves up to this number;
+            // client enforces it at runtime as a safety net so we never exceed it).
+            const string MaxPmcsDesc = "Hard cap on total PMC count (starting + waves) per raid.\nMust match the server config maxTotalPmcs value for this map.\nChanges do not take effect until next raid.";
+
+            _customsMaxPmcs = BindMaxPmc(config, "Max PMCs - Customs", 12, MaxPmcsDesc);
+            Plugin.CustomsMaxPmcs = _customsMaxPmcs.Value;
+            _customsMaxPmcs.SettingChanged += ABPS_SettingChanged;
+
+            _factoryMaxPmcs = BindMaxPmc(config, "Max PMCs - Factory", 5, MaxPmcsDesc);
+            Plugin.FactoryMaxPmcs = _factoryMaxPmcs.Value;
+            _factoryMaxPmcs.SettingChanged += ABPS_SettingChanged;
+
+            _interchangeMaxPmcs = BindMaxPmc(config, "Max PMCs - Interchange", 12, MaxPmcsDesc);
+            Plugin.InterchangeMaxPmcs = _interchangeMaxPmcs.Value;
+            _interchangeMaxPmcs.SettingChanged += ABPS_SettingChanged;
+
+            _labsMaxPmcs = BindMaxPmc(config, "Max PMCs - Labs", 10, MaxPmcsDesc);
+            Plugin.LabsMaxPmcs = _labsMaxPmcs.Value;
+            _labsMaxPmcs.SettingChanged += ABPS_SettingChanged;
+
+            _lighthouseMaxPmcs = BindMaxPmc(config, "Max PMCs - Lighthouse", 12, MaxPmcsDesc);
+            Plugin.LighthouseMaxPmcs = _lighthouseMaxPmcs.Value;
+            _lighthouseMaxPmcs.SettingChanged += ABPS_SettingChanged;
+
+            _reserveMaxPmcs = BindMaxPmc(config, "Max PMCs - Reserve", 12, MaxPmcsDesc);
+            Plugin.ReserveMaxPmcs = _reserveMaxPmcs.Value;
+            _reserveMaxPmcs.SettingChanged += ABPS_SettingChanged;
+
+            _groundZeroMaxPmcs = BindMaxPmc(config, "Max PMCs - Ground Zero", 7, MaxPmcsDesc);
+            Plugin.GroundZeroMaxPmcs = _groundZeroMaxPmcs.Value;
+            _groundZeroMaxPmcs.SettingChanged += ABPS_SettingChanged;
+
+            _groundZeroHighMaxPmcs = BindMaxPmc(config, "Max PMCs - Ground Zero High", 9, MaxPmcsDesc);
+            Plugin.GroundZeroHighMaxPmcs = _groundZeroHighMaxPmcs.Value;
+            _groundZeroHighMaxPmcs.SettingChanged += ABPS_SettingChanged;
+
+            _shorelineMaxPmcs = BindMaxPmc(config, "Max PMCs - Shoreline", 12, MaxPmcsDesc);
+            Plugin.ShorelineMaxPmcs = _shorelineMaxPmcs.Value;
+            _shorelineMaxPmcs.SettingChanged += ABPS_SettingChanged;
+
+            _streetsMaxPmcs = BindMaxPmc(config, "Max PMCs - Streets", 12, MaxPmcsDesc);
+            Plugin.StreetsMaxPmcs = _streetsMaxPmcs.Value;
+            _streetsMaxPmcs.SettingChanged += ABPS_SettingChanged;
+
+            _woodsMaxPmcs = BindMaxPmc(config, "Max PMCs - Woods", 10, MaxPmcsDesc);
+            Plugin.WoodsMaxPmcs = _woodsMaxPmcs.Value;
+            _woodsMaxPmcs.SettingChanged += ABPS_SettingChanged;
+
+            _labyrinthMaxPmcs = BindMaxPmc(config, "Max PMCs - Labyrinth", 8, MaxPmcsDesc);
+            Plugin.LabyrinthMaxPmcs = _labyrinthMaxPmcs.Value;
+            _labyrinthMaxPmcs.SettingChanged += ABPS_SettingChanged;
+
+            // Per-map total scav spawn budget per raid (1 player baseline; scales by Per-Player Scav Multiplier).
+            const string MaxScavsDesc = "Max total scav spawns per raid (1 player baseline). Scaled by Per-Player Scav Multiplier as players are added.\nChanges do not take effect until next raid.";
+
+            _customsMaxScavs = BindMaxScav(config, "Max Scavs Per Raid - Customs", 20, MaxScavsDesc);
+            Plugin.CustomsMaxScavs = _customsMaxScavs.Value;
+            _customsMaxScavs.SettingChanged += ABPS_SettingChanged;
+
+            _factoryMaxScavs = BindMaxScav(config, "Max Scavs Per Raid - Factory", 10, MaxScavsDesc);
+            Plugin.FactoryMaxScavs = _factoryMaxScavs.Value;
+            _factoryMaxScavs.SettingChanged += ABPS_SettingChanged;
+
+            _interchangeMaxScavs = BindMaxScav(config, "Max Scavs Per Raid - Interchange", 22, MaxScavsDesc);
+            Plugin.InterchangeMaxScavs = _interchangeMaxScavs.Value;
+            _interchangeMaxScavs.SettingChanged += ABPS_SettingChanged;
+
+            _labsMaxScavs = BindMaxScav(config, "Max Scavs Per Raid - Labs", 18, MaxScavsDesc);
+            Plugin.LabsMaxScavs = _labsMaxScavs.Value;
+            _labsMaxScavs.SettingChanged += ABPS_SettingChanged;
+
+            _lighthouseMaxScavs = BindMaxScav(config, "Max Scavs Per Raid - Lighthouse", 20, MaxScavsDesc);
+            Plugin.LighthouseMaxScavs = _lighthouseMaxScavs.Value;
+            _lighthouseMaxScavs.SettingChanged += ABPS_SettingChanged;
+
+            _reserveMaxScavs = BindMaxScav(config, "Max Scavs Per Raid - Reserve", 22, MaxScavsDesc);
+            Plugin.ReserveMaxScavs = _reserveMaxScavs.Value;
+            _reserveMaxScavs.SettingChanged += ABPS_SettingChanged;
+
+            _groundZeroMaxScavs = BindMaxScav(config, "Max Scavs Per Raid - Ground Zero", 14, MaxScavsDesc);
+            Plugin.GroundZeroMaxScavs = _groundZeroMaxScavs.Value;
+            _groundZeroMaxScavs.SettingChanged += ABPS_SettingChanged;
+
+            _groundZeroHighMaxScavs = BindMaxScav(config, "Max Scavs Per Raid - Ground Zero High", 14, MaxScavsDesc);
+            Plugin.GroundZeroHighMaxScavs = _groundZeroHighMaxScavs.Value;
+            _groundZeroHighMaxScavs.SettingChanged += ABPS_SettingChanged;
+
+            _shorelineMaxScavs = BindMaxScav(config, "Max Scavs Per Raid - Shoreline", 24, MaxScavsDesc);
+            Plugin.ShorelineMaxScavs = _shorelineMaxScavs.Value;
+            _shorelineMaxScavs.SettingChanged += ABPS_SettingChanged;
+
+            _streetsMaxScavs = BindMaxScav(config, "Max Scavs Per Raid - Streets", 18, MaxScavsDesc);
+            Plugin.StreetsMaxScavs = _streetsMaxScavs.Value;
+            _streetsMaxScavs.SettingChanged += ABPS_SettingChanged;
+
+            _woodsMaxScavs = BindMaxScav(config, "Max Scavs Per Raid - Woods", 24, MaxScavsDesc);
+            Plugin.WoodsMaxScavs = _woodsMaxScavs.Value;
+            _woodsMaxScavs.SettingChanged += ABPS_SettingChanged;
+
+            _labyrinthMaxScavs = BindMaxScav(config, "Max Scavs Per Raid - Labyrinth", 12, MaxScavsDesc);
+            Plugin.LabyrinthMaxScavs = _labyrinthMaxScavs.Value;
+            _labyrinthMaxScavs.SettingChanged += ABPS_SettingChanged;
 
             
             // Boss stuff
@@ -572,7 +742,199 @@ namespace acidphantasm_botplacementsystem
                     new ConfigurationManagerAttributes { IsAdvanced = true, Order = _loadOrder-- }));
             Plugin.DebugLogging = _enableDebug.Value;
             _enableDebug.SettingChanged += ABPS_SettingChanged;
+            
+            _directionalBias = config.Bind(
+                GeneralConfig,
+                "Directional Bias",
+                0.8f,
+                new ConfigDescription("How much spawns favor the direction you're traveling. 0 = distance only, 0.5 = moderate bias, 1.0 = strong bias. Spawns ahead of you are favored, behind deprioritized.",
+                    new AcceptableValueRange<float>(0f, 1f),
+                    new ConfigurationManagerAttributes { Order = _loadOrder-- }));
+            Plugin.DirectionalBias = _directionalBias.Value;
+            _directionalBias.SettingChanged += ABPS_SettingChanged;
+            
+            _shufflePercent = config.Bind(
+                GeneralConfig,
+                "Shuffle Percent",
+                0.5f,
+                new ConfigDescription("What portion of the ahead-sorted spawn list gets loosely shuffled. 0.5 = top 50%, 1.0 = entire list.",
+                    new AcceptableValueRange<float>(0f, 1f),
+                    new ConfigurationManagerAttributes { Order = _loadOrder-- }));
+            Plugin.ShufflePercent = _shufflePercent.Value;
+            _shufflePercent.SettingChanged += ABPS_SettingChanged;
+            
+            _shuffleStep = config.Bind(
+                GeneralConfig,
+                "Shuffle Step",
+                3,
+                new ConfigDescription("Every Nth element in the shuffle zone gets swapped with a random element from outside it. Lower = more shuffling.",
+                    new AcceptableValueRange<int>(2, 10),
+                    new ConfigurationManagerAttributes { Order = _loadOrder-- }));
+            Plugin.ShuffleStep = _shuffleStep.Value;
+            _shuffleStep.SettingChanged += ABPS_SettingChanged;
+
+            _pickBiasPower = config.Bind(
+                GeneralConfig,
+                "Pick Bias Power",
+                1.6f,
+                new ConfigDescription("Steepness of the scav weighted pick. 0 = uniform random across the top 80 candidates. 1.0 = moderate close-bias. 1.6 = strong (recommended). 2.5 = very strong, almost always closest. 3.0+ = near-deterministic closest.",
+                    new AcceptableValueRange<float>(0f, 3f),
+                    new ConfigurationManagerAttributes { Order = _loadOrder-- }));
+            Plugin.PickBiasPower = _pickBiasPower.Value;
+            _pickBiasPower.SettingChanged += ABPS_SettingChanged;
+
+            _pickBiasOffset = config.Bind(
+                GeneralConfig,
+                "Pick Bias Offset",
+                1f,
+                new ConfigDescription("Flattens the top of the scav weighted pick curve. 1 = sharp peak at closest (default). 5 = first 5 candidates similarly likely. 10 = first 10 similarly likely. Higher offset = less front-bias, more spread amongst near-by candidates.",
+                    new AcceptableValueRange<float>(1f, 20f),
+                    new ConfigurationManagerAttributes { Order = _loadOrder-- }));
+            Plugin.PickBiasOffset = _pickBiasOffset.Value;
+            _pickBiasOffset.SettingChanged += ABPS_SettingChanged;
+
+            _scavSpawnNoise = config.Bind(
+                GeneralConfig,
+                "Scav Spawn Noise",
+                100f,
+                new ConfigDescription("Random distance noise (meters) added to scav spawn scoring. Higher = scavs spread more, less predictable.",
+                    new AcceptableValueRange<float>(0f, 500f),
+                    new ConfigurationManagerAttributes { Order = _loadOrder-- }));
+            Plugin.ScavSpawnNoise = _scavSpawnNoise.Value;
+            _scavSpawnNoise.SettingChanged += ABPS_SettingChanged;
+
+            _pmcSpawnNoise = config.Bind(
+                GeneralConfig,
+                "PMC Spawn Noise",
+                200f,
+                new ConfigDescription("Random distance noise (meters) added to PMC spawn scoring. Higher = PMCs spread across the map, less likely to spawn near you.",
+                    new AcceptableValueRange<float>(0f, 1000f),
+                    new ConfigurationManagerAttributes { Order = _loadOrder-- }));
+            Plugin.PmcSpawnNoise = _pmcSpawnNoise.Value;
+            _pmcSpawnNoise.SettingChanged += ABPS_SettingChanged;
+
+            _pmcSkipClosestPercent = config.Bind(
+                GeneralConfig,
+                "PMC Skip Closest Percent",
+                0.15f,
+                new ConfigDescription("Skip this fraction of the closest valid spawn points when picking a PMC spawn. 0.15 = never use closest 15%.",
+                    new AcceptableValueRange<float>(0f, 0.5f),
+                    new ConfigurationManagerAttributes { Order = _loadOrder-- }));
+            Plugin.PmcSkipClosestPercent = _pmcSkipClosestPercent.Value;
+            _pmcSkipClosestPercent.SettingChanged += ABPS_SettingChanged;
+
+            _perPlayerScavMultiplier = config.Bind(
+                GeneralConfig,
+                "Per-Player Scav Multiplier",
+                0.3f,
+                new ConfigDescription("How much each extra player past the first scales the scav spawn budget.\n0.0 = same budget for any player count.\n0.2 = 5 players get 1.8x the solo budget (recommended).\n1.0 = vanilla acid behaviour: 5 players get 5x the solo budget.",
+                    new AcceptableValueRange<float>(0f, 1f),
+                    new ConfigurationManagerAttributes { Order = _loadOrder-- }));
+            Plugin.PerPlayerScavMultiplier = _perPlayerScavMultiplier.Value;
+            _perPlayerScavMultiplier.SettingChanged += ABPS_SettingChanged;
+
+            _scavSkipClosestPercent = config.Bind(
+                GeneralConfig,
+                "Scav Skip Closest Percent",
+                0.1f,
+                new ConfigDescription("Skip this fraction of the closest valid spawn points when picking a scav spawn. 0.1 = never use closest 10%.",
+                    new AcceptableValueRange<float>(0f, 0.5f),
+                    new ConfigurationManagerAttributes { Order = _loadOrder-- }));
+            Plugin.ScavSkipClosestPercent = _scavSkipClosestPercent.Value;
+            _scavSkipClosestPercent.SettingChanged += ABPS_SettingChanged;
+
+            _hotzoneScoreMultiplier = config.Bind(
+                GeneralConfig,
+                "Hotzone Score Multiplier",
+                0.7f,
+                new ConfigDescription("Score multiplier applied to spawn points inside a map hotzone. < 1.0 favors hotzones (lower score wins). 1.0 disables the bias.\nRequires 'Enable Hotzones' to be on.",
+                    new AcceptableValueRange<float>(0.1f, 1.5f),
+                    new ConfigurationManagerAttributes { Order = _loadOrder-- }));
+            Plugin.HotzoneScoreMultiplier = _hotzoneScoreMultiplier.Value;
+            _hotzoneScoreMultiplier.SettingChanged += ABPS_SettingChanged;
+
+            _scavScheduleStartPercent = config.Bind(
+                GeneralConfig,
+                "Scav Schedule Start Budget Pct",
+                0.2f,
+                new ConfigDescription("Fraction of the per-player scav budget unlocked at raid start. Ensures the map fills with some scavs immediately.",
+                    new AcceptableValueRange<float>(0f, 1f),
+                    new ConfigurationManagerAttributes { Order = _loadOrder-- }));
+            Plugin.ScavScheduleStartPercent = _scavScheduleStartPercent.Value;
+            _scavScheduleStartPercent.SettingChanged += ABPS_SettingChanged;
+
+            _scavScheduleMidTimePercent = config.Bind(
+                GeneralConfig,
+                "Scav Schedule Mid Time Pct",
+                0.30f,
+                new ConfigDescription("Raid time (as fraction of BotStart..BotStop) at which the mid budget point is hit.",
+                    new AcceptableValueRange<float>(0.05f, 0.95f),
+                    new ConfigurationManagerAttributes { Order = _loadOrder-- }));
+            Plugin.ScavScheduleMidTimePercent = _scavScheduleMidTimePercent.Value;
+            _scavScheduleMidTimePercent.SettingChanged += ABPS_SettingChanged;
+
+            _scavScheduleMidBudgetPercent = config.Bind(
+                GeneralConfig,
+                "Scav Schedule Mid Budget Pct",
+                0.50f,
+                new ConfigDescription("Fraction of the per-player scav budget unlocked at the mid time point. Should be > Start, < 1.0.",
+                    new AcceptableValueRange<float>(0f, 1f),
+                    new ConfigurationManagerAttributes { Order = _loadOrder-- }));
+            Plugin.ScavScheduleMidBudgetPercent = _scavScheduleMidBudgetPercent.Value;
+            _scavScheduleMidBudgetPercent.SettingChanged += ABPS_SettingChanged;
+
+            _scavScheduleFullPercent = config.Bind(
+                GeneralConfig,
+                "Scav Schedule Full Time Pct",
+                0.70f,
+                new ConfigDescription("Raid time (as fraction of BotStart..BotStop) at which 100% of the budget is unlocked. Beyond this point, normal cap applies.",
+                    new AcceptableValueRange<float>(0.1f, 1f),
+                    new ConfigurationManagerAttributes { Order = _loadOrder-- }));
+            Plugin.ScavScheduleFullPercent = _scavScheduleFullPercent.Value;
+            _scavScheduleFullPercent.SettingChanged += ABPS_SettingChanged;
+
+            // PMC tick (client-driven wave PMCs) — same curve shape as scavs but with separate values.
+            _pmcScheduleStartPercent = config.Bind(
+                GeneralConfig,
+                "PMC Schedule Start Budget Pct",
+                0.20f,
+                new ConfigDescription("Fraction of the per-map PMC budget unlocked at raid start. Higher = more PMCs available early.",
+                    new AcceptableValueRange<float>(0f, 1f),
+                    new ConfigurationManagerAttributes { Order = _loadOrder-- }));
+            Plugin.PmcScheduleStartPercent = _pmcScheduleStartPercent.Value;
+            _pmcScheduleStartPercent.SettingChanged += ABPS_SettingChanged;
+
+            _pmcScheduleMidTimePercent = config.Bind(
+                GeneralConfig,
+                "PMC Schedule Mid Time Pct",
+                0.40f,
+                new ConfigDescription("Raid time (as fraction of BotStart..BotStop) at which the mid PMC budget point is hit.",
+                    new AcceptableValueRange<float>(0.05f, 0.95f),
+                    new ConfigurationManagerAttributes { Order = _loadOrder-- }));
+            Plugin.PmcScheduleMidTimePercent = _pmcScheduleMidTimePercent.Value;
+            _pmcScheduleMidTimePercent.SettingChanged += ABPS_SettingChanged;
+
+            _pmcScheduleMidBudgetPercent = config.Bind(
+                GeneralConfig,
+                "PMC Schedule Mid Budget Pct",
+                0.60f,
+                new ConfigDescription("Fraction of the per-map PMC budget unlocked at the mid time point. Should be greater than Start.",
+                    new AcceptableValueRange<float>(0f, 1f),
+                    new ConfigurationManagerAttributes { Order = _loadOrder-- }));
+            Plugin.PmcScheduleMidBudgetPercent = _pmcScheduleMidBudgetPercent.Value;
+            _pmcScheduleMidBudgetPercent.SettingChanged += ABPS_SettingChanged;
+
+            _pmcScheduleFullPercent = config.Bind(
+                GeneralConfig,
+                "PMC Schedule Full Time Pct",
+                0.70f,
+                new ConfigDescription("Raid time (as fraction of BotStart..BotStop) at which 100% of the PMC budget is unlocked.",
+                    new AcceptableValueRange<float>(0.1f, 1f),
+                    new ConfigurationManagerAttributes { Order = _loadOrder-- }));
+            Plugin.PmcScheduleFullPercent = _pmcScheduleFullPercent.Value;
+            _pmcScheduleFullPercent.SettingChanged += ABPS_SettingChanged;
         }
+
         private static void ABPS_SettingChanged(object sender, EventArgs e)
         {
             Plugin.DespawnFurthest = _despawnFurthest.Value;
@@ -589,6 +951,32 @@ namespace acidphantasm_botplacementsystem
             Plugin.StreetsMapLimit = _streetsMapLimit.Value;
             Plugin.WoodsMapLimit = _woodsMapLimit.Value;
             Plugin.LabyrinthMapLimit = _labyrinthMapLimit.Value;
+
+            Plugin.CustomsMaxPmcs = _customsMaxPmcs.Value;
+            Plugin.FactoryMaxPmcs = _factoryMaxPmcs.Value;
+            Plugin.InterchangeMaxPmcs = _interchangeMaxPmcs.Value;
+            Plugin.LabsMaxPmcs = _labsMaxPmcs.Value;
+            Plugin.LighthouseMaxPmcs = _lighthouseMaxPmcs.Value;
+            Plugin.ReserveMaxPmcs = _reserveMaxPmcs.Value;
+            Plugin.GroundZeroMaxPmcs = _groundZeroMaxPmcs.Value;
+            Plugin.GroundZeroHighMaxPmcs = _groundZeroHighMaxPmcs.Value;
+            Plugin.ShorelineMaxPmcs = _shorelineMaxPmcs.Value;
+            Plugin.StreetsMaxPmcs = _streetsMaxPmcs.Value;
+            Plugin.WoodsMaxPmcs = _woodsMaxPmcs.Value;
+            Plugin.LabyrinthMaxPmcs = _labyrinthMaxPmcs.Value;
+
+            Plugin.CustomsMaxScavs = _customsMaxScavs.Value;
+            Plugin.FactoryMaxScavs = _factoryMaxScavs.Value;
+            Plugin.InterchangeMaxScavs = _interchangeMaxScavs.Value;
+            Plugin.LabsMaxScavs = _labsMaxScavs.Value;
+            Plugin.LighthouseMaxScavs = _lighthouseMaxScavs.Value;
+            Plugin.ReserveMaxScavs = _reserveMaxScavs.Value;
+            Plugin.GroundZeroMaxScavs = _groundZeroMaxScavs.Value;
+            Plugin.GroundZeroHighMaxScavs = _groundZeroHighMaxScavs.Value;
+            Plugin.ShorelineMaxScavs = _shorelineMaxScavs.Value;
+            Plugin.StreetsMaxScavs = _streetsMaxScavs.Value;
+            Plugin.WoodsMaxScavs = _woodsMaxScavs.Value;
+            Plugin.LabyrinthMaxScavs = _labyrinthMaxScavs.Value;
 
             Plugin.RegressiveChances = _regressiveChances.Value;
             Plugin.ProgressiveChances = _progressiveChances.Value;
@@ -627,6 +1015,26 @@ namespace acidphantasm_botplacementsystem
             Plugin.LabyrinthScavSpawnDistanceCheck = _labyrinthScavSpawnDistanceCheck.Value;
             
             Plugin.DebugLogging = _enableDebug.Value;
+            Plugin.DirectionalBias = _directionalBias.Value;
+            Plugin.ShufflePercent = _shufflePercent.Value;
+            Plugin.ShuffleStep = _shuffleStep.Value;
+            Plugin.PickBiasPower = _pickBiasPower.Value;
+            Plugin.PickBiasOffset = _pickBiasOffset.Value;
+            Plugin.ScavSpawnNoise = _scavSpawnNoise.Value;
+            Plugin.PmcSpawnNoise = _pmcSpawnNoise.Value;
+            Plugin.PmcSkipClosestPercent = _pmcSkipClosestPercent.Value;
+            Plugin.ScavSkipClosestPercent = _scavSkipClosestPercent.Value;
+            Plugin.PerPlayerScavMultiplier = _perPlayerScavMultiplier.Value;
+            Plugin.HotzoneScoreMultiplier = _hotzoneScoreMultiplier.Value;
+            Plugin.ScavScheduleStartPercent = _scavScheduleStartPercent.Value;
+            Plugin.ScavScheduleMidTimePercent = _scavScheduleMidTimePercent.Value;
+            Plugin.ScavScheduleMidBudgetPercent = _scavScheduleMidBudgetPercent.Value;
+            Plugin.ScavScheduleFullPercent = _scavScheduleFullPercent.Value;
+
+            Plugin.PmcScheduleStartPercent = _pmcScheduleStartPercent.Value;
+            Plugin.PmcScheduleMidTimePercent = _pmcScheduleMidTimePercent.Value;
+            Plugin.PmcScheduleMidBudgetPercent = _pmcScheduleMidBudgetPercent.Value;
+            Plugin.PmcScheduleFullPercent = _pmcScheduleFullPercent.Value;
         }
     }
 }

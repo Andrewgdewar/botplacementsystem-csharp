@@ -95,6 +95,20 @@ public class ValidLocationsMinMax
             }
         }
     }
+
+    public bool TryGetValue(string key, out MinMax<int> value)
+    {
+        try
+        {
+            value = this[key];
+            return true;
+        }
+        catch
+        {
+            value = default;
+            return false;
+        }
+    }
 }
 
 public class ValidLocationInt
