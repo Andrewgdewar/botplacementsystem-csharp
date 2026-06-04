@@ -53,7 +53,7 @@ namespace acidphantasm_botplacementsystem.Utils
         public static int PositionSnapshotVersion = 0;
         private static readonly List<Vector3> _positionHistory = new();
         private static float _lastPositionUpdateTime = 0f;
-        private const float PositionUpdateInterval = 120f; // Sample position every 2 minutes
+        private const float PositionUpdateInterval = 15f; // Sample position every 15 seconds
         private const int MaxPositionHistory = 6;
         private const float MinDirectionDistance = 10f; // Min movement to establish direction
 
@@ -169,8 +169,9 @@ namespace acidphantasm_botplacementsystem.Utils
         
         /// <summary>
         /// Scores a spawn point based on distance, direction of travel, and noise.
-        /// Points ahead of the player's travel direction score lower (favored).
-        /// Points behind score higher (deprioritized).
+        /// Cosine-weighted directional bias: 0° favored (cos=1), 90° neutral (cos=0),
+        /// 180° (behind) penalised (cos=-1). Sides stay competitive on raw distance,
+        /// ahead spawns get a discount, behind spawns get a markup.
         /// Falls back to distance + noise when no travel direction is established.
         /// Points inside a hotzone receive a score multiplier (HotzoneScoreMultiplier)
         /// to favor them, restoring the hotzone preference that was lost when the
@@ -196,7 +197,8 @@ namespace acidphantasm_botplacementsystem.Utils
                 else
                 {
                     var dot = Vector3.Dot(offset.normalized, TravelDirection.Value);
-                    // dot: 1.0 = ahead, 0 = side, -1 = behind
+                    // dot: 1.0 = ahead, 0 = side, -1 = behind.
+                    // multiplier: ahead = 1-bias (cheap), side = 1.0 (neutral), behind = 1+bias (expensive).
                     var directionalMultiplier = 1.0f - (dot * Plugin.DirectionalBias);
                     score = distance * directionalMultiplier + noise;
                 }

@@ -35,9 +35,12 @@ namespace acidphantasm_botplacementsystem.Patches
                 if (!data.IsValidSpawnType(WildSpawnType.assault) || pointsToSpawn != null) return;
 
                 var mapName = Utility.CurrentLocation.ToLower();
-                var pmcDistance = GetDistanceForMap(mapName);
                 var isSmallMap = mapName.Contains("factory") || mapName.Contains("sandbox") ||
                                  mapName.Contains("labyrinth") || mapName.Contains("laboratory");
+                // Buffer to keep scavs from spawning right on top of a human player.
+                // NOT the PMC-vs-PMC spacing from cfg (which is 100-150m and would
+                // forbid every spawn point near the squad on a large map).
+                var humanDistance = isSmallMap ? 25f : 50f;
                 var scavDistance = isSmallMap ? 20f : 40f;
 
                 List<Player> pmcList;
@@ -48,7 +51,7 @@ namespace acidphantasm_botplacementsystem.Patches
                     scavList = Utility.CachedAssaultBots.ToList();
                 }
 
-                var bestPoint = FindBestGlobalSpawnPoint(pmcList, pmcDistance, scavList, scavDistance);
+                var bestPoint = FindBestGlobalSpawnPoint(pmcList, humanDistance, scavList, scavDistance);
 
                 if (bestPoint != null)
                 {
