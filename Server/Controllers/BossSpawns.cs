@@ -17,7 +17,8 @@ public class BossSpawns(
     ICloner cloner,
     WeightedRandomHelper weightedRandomHelper,
     RandomUtil randomUtil,
-    ConfigServer configServer)
+    ConfigServer configServer,
+    PresetManager presetManager)
 {
     private readonly BotConfig _botConfig = configServer.GetConfig<BotConfig>();
 
@@ -44,6 +45,43 @@ public class BossSpawns(
             spawn.Supports = null!; // drop heavy support groups (e.g. Boar close guards)
         }
         if (cap.Chance is not null) spawn.BossChance = cap.Chance.Value;
+    }
+
+    /// <summary>
+    /// boss-rotation preset: for each present main boss, swap it for a random DIFFERENT
+    /// boss from the rotation pool. The injected boss is forced to 100% spawn and keeps
+    /// the original boss's zone. Runs AFTER performance caps so the pool's escort/support
+    /// values (not the capped originals) are what spawns.
+    /// </summary>
+    private void ApplyBossRotation(List<BossLocationSpawn> bossesForMap)
+    {
+        if (!presetManager.RotateMainBosses) return;
+        var pool = ModConfig.MainBossRotationPool;
+        if (pool is null || pool.Count < 2) return;
+
+        var poolNames = pool.Select(b => b.BossName).Where(n => n is not null).ToHashSet();
+        var difficultyWeights = ModConfig.Config.BossDifficulty;
+
+        for (var i = 0; i < bossesForMap.Count; i++)
+        {
+            var original = bossesForMap[i];
+            if (original.BossName is null || !poolNames.Contains(original.BossName)) continue;
+
+            var candidates = pool.Where(b => b.BossName != original.BossName).ToList();
+            if (candidates.Count == 0) continue;
+
+            var pick = candidates[randomUtil.GetInt(0, candidates.Count - 1)];
+            var injected = cloner.Clone(pick);
+            if (injected is null) continue;
+
+            injected.BossChance = 100;
+            injected.BossZone = original.BossZone;
+            injected.BossDifficulty = weightedRandomHelper.GetWeightedValue(difficultyWeights);
+            injected.BossEscortDifficulty = weightedRandomHelper.GetWeightedValue(difficultyWeights);
+            bossesForMap[i] = injected;
+
+            logger.Info($"[ABPS] boss-rotation: {original.BossName} -> {injected.BossName} @ zone='{injected.BossZone}'");
+        }
     }
 
     public List<BossLocationSpawn> GetCustomMapData(string location, double escapeTimeLimit)
@@ -121,6 +159,8 @@ public class BossSpawns(
             ApplyPerformanceCaps(bossDefaultData[0]);
             bossesForMap.Add(bossDefaultData[0]);
         }
+
+        ApplyBossRotation(bossesForMap);
 
         return bossesForMap;
     }

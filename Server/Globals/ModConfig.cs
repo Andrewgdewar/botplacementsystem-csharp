@@ -7,6 +7,7 @@ using SPTarkov.DI.Annotations;
 using SPTarkov.Server.Core.DI;
 using SPTarkov.Server.Core.Helpers;
 using SPTarkov.Server.Core.Loaders;
+using SPTarkov.Server.Core.Models.Eft.Common;
 using SPTarkov.Server.Core.Models.Utils;
 using SPTarkov.Server.Core.Utils;
 
@@ -24,6 +25,8 @@ public class ModConfig : IOnLoad
     public static PmcDefaults? PmcDefaults { get; private set; }
     public static ScavDefaults? ScavDefaults { get; private set; }
     public static HostilityDefaults? HostilityDefaults { get; private set; }
+    /// <summary>Pool of main bosses used by the boss-rotation preset (Injections/MainBosses.json).</summary>
+    public static List<BossLocationSpawn>? MainBossRotationPool { get; private set; }
     public static AbpsConfig Config {get; private set;} = null!;
     public static AbpsConfig OriginalConfig {get; private set;} = null!;
     
@@ -53,6 +56,7 @@ public class ModConfig : IOnLoad
         PmcDefaults = await _jsonUtil.DeserializeFromFileAsync<PmcDefaults>(_modPath + "/Defaults/PMCs.json") ?? throw new ArgumentNullException();
         ScavDefaults = await _jsonUtil.DeserializeFromFileAsync<ScavDefaults>(_modPath + "/Defaults/Scavs.json") ?? throw new ArgumentNullException();
         HostilityDefaults = await _jsonUtil.DeserializeFromFileAsync<HostilityDefaults>(_modPath + "/Defaults/Hostility.json") ?? throw new ArgumentNullException();
+        MainBossRotationPool = await _jsonUtil.DeserializeFromFileAsync<List<BossLocationSpawn>>(_modPath + "/Injections/MainBosses.json") ?? new List<BossLocationSpawn>();
     }
     
     public static async Task<ConfigOperationResult> ReloadConfig()

@@ -49,6 +49,8 @@ public class PresetManager
     public float ScavCapMult { get; private set; } = 1f;
     /// <summary>Cap multiplier to apply to <c>Plugin.*MaxPmcs</c> on the client.</summary>
     public float PmcCapMult { get; private set; } = 1f;
+    /// <summary>When true, swap each present main boss for a random different one from the rotation pool.</summary>
+    public bool RotateMainBosses { get; private set; }
 
     // (boss type, [maps where it's the main boss]). Pulled from SPT_Data and confirmed
     // against the user's tuning. Used by guaranteeMainBosses / roamingBosses flags.
@@ -103,6 +105,7 @@ public class PresetManager
             ActivePresetLabel = DefaultPresetName;
             ScavCapMult = 1f;
             PmcCapMult = 1f;
+            RotateMainBosses = false;
             return;
         }
 
@@ -115,11 +118,13 @@ public class PresetManager
         {
             ScavCapMult = 1f;
             PmcCapMult = 1f;
+            RotateMainBosses = false;
             return;
         }
 
         ScavCapMult = preset.ScavCapMult;
         PmcCapMult = preset.PmcCapMult;
+        RotateMainBosses = preset.RotateMainBosses;
 
         try
         {
@@ -129,7 +134,7 @@ public class PresetManager
             if (preset.GuaranteeMainBosses)
                 ApplyMainBossOverrides(preset.RoamingBosses);
 
-            _logger.Info($"[ABPS] Preset applied: {chosen} (scavCap x{preset.ScavCapMult:0.00}, pmcCap x{preset.PmcCapMult:0.00}, scavStart x{preset.ScavStartMult:0.00}, pmcStart x{preset.PmcStartMult:0.00}, escort='{preset.EscortAmount ?? "(base)"}', guaranteeBosses={preset.GuaranteeMainBosses}, roaming={preset.RoamingBosses})");
+            _logger.Info($"[ABPS] Preset applied: {chosen} (scavCap x{preset.ScavCapMult:0.00}, pmcCap x{preset.PmcCapMult:0.00}, scavStart x{preset.ScavStartMult:0.00}, pmcStart x{preset.PmcStartMult:0.00}, escort='{preset.EscortAmount ?? "(base)"}', guaranteeBosses={preset.GuaranteeMainBosses}, roaming={preset.RoamingBosses}, rotateBosses={preset.RotateMainBosses})");
         }
         catch (Exception ex)
         {
@@ -219,6 +224,7 @@ public class PresetManager
                             EscortAmount        = ReadString(obj, "escortAmount", null),
                             GuaranteeMainBosses = ReadBool(obj,  "guaranteeMainBosses", false),
                             RoamingBosses       = ReadBool(obj,  "roamingBosses",       false),
+                            RotateMainBosses    = ReadBool(obj,  "rotateMainBosses",    false),
                         };
                     }
                 }
@@ -281,5 +287,6 @@ public class PresetManager
         public string? EscortAmount;
         public bool GuaranteeMainBosses;
         public bool RoamingBosses;
+        public bool RotateMainBosses;
     }
 }

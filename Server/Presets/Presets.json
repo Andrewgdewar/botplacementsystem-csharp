@@ -59,6 +59,13 @@
     "guaranteeMainBosses": true,
     "roamingBosses": true
   },
+  "boss-rotation": {
+    "scavCapMult": 1.0,
+    "pmcCapMult": 1.0,
+    "scavStartMult": 1.0,
+    "pmcStartMult": 1.0,
+    "rotateMainBosses": true
+  },
   "insanity": {
     "scavCapMult": 2,
     "pmcCapMult": 2,
