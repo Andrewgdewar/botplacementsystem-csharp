@@ -119,8 +119,9 @@ public class BossSpawns(
             if (injected is null) return;
             injected.BossDifficulty = weightedRandomHelper.GetWeightedValue(difficultyWeights);
             injected.BossEscortDifficulty = weightedRandomHelper.GetWeightedValue(difficultyWeights);
+            injected.Time = randomUtil.GetInt(300, 1200); // roaming spawn: random 5-20 min in
             bossesForMap.Add(injected); // BossZone stays "" -> roams
-            logger.Info($"[ABPS] roaming-goon-squad: injected roaming knight (no existing knight)");
+            logger.Info($"[ABPS] roaming-goon-squad: injected roaming knight (no existing knight) @ time={injected.Time}s");
         }
     }
 
@@ -141,8 +142,9 @@ public class BossSpawns(
         if (injected is null) return;
         injected.BossDifficulty = weightedRandomHelper.GetWeightedValue(difficultyWeights);
         injected.BossEscortDifficulty = weightedRandomHelper.GetWeightedValue(difficultyWeights);
+        injected.Time = randomUtil.GetInt(300, 1200); // roaming spawn: random 5-20 min in
         bossesForMap.Add(injected); // BossZone stays "" -> roams
-        logger.Info($"[ABPS] inject-squad: added roaming '{templateKey}' ({injected.BossName})");
+        logger.Info($"[ABPS] inject-squad: added roaming '{templateKey}' ({injected.BossName}) @ time={injected.Time}s");
     }
 
     public List<BossLocationSpawn> GetCustomMapData(string location, double escapeTimeLimit)
