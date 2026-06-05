@@ -21,6 +21,31 @@ public class BossSpawns(
 {
     private readonly BotConfig _botConfig = configServer.GetConfig<BotConfig>();
 
+    // Mirrors MOAR's bossPerformanceHash: caps heavy boss entourages (and a couple of
+    // chances) to reduce bot load. EscortAmount is a weighted comma list SPT rolls per
+    // spawn; Chance (when set) overrides the configured spawn chance for that boss.
+    private static readonly Dictionary<string, (string? EscortAmount, int? Chance)> BossPerformanceCaps = new()
+    {
+        ["bossZryachiy"] = ("0", 50),     // Lighthouse: halve chance, drop escort
+        ["exUsec"]       = ("1", 40),     // Roaming rogues: cap pack to 1 follower
+        ["bossBully"]    = ("2,3", null), // Reshala escort capped
+        ["bossBoar"]     = ("1,2,2,2", null), // Boar (streets) escort capped
+        ["bossKojaniy"]  = ("1,2,2", null),   // Shturman escort capped
+    };
+
+    private static void ApplyPerformanceCaps(BossLocationSpawn? spawn)
+    {
+        if (spawn?.BossName is null) return;
+        if (!BossPerformanceCaps.TryGetValue(spawn.BossName, out var cap)) return;
+
+        if (cap.EscortAmount is not null)
+        {
+            spawn.BossEscortAmount = cap.EscortAmount;
+            spawn.Supports = null!; // drop heavy support groups (e.g. Boar close guards)
+        }
+        if (cap.Chance is not null) spawn.BossChance = cap.Chance.Value;
+    }
+
     public List<BossLocationSpawn> GetCustomMapData(string location, double escapeTimeLimit)
     {
         return GetConfigValueForLocation(location, escapeTimeLimit);
