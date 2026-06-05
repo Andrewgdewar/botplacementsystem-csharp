@@ -10,7 +10,7 @@
   },
   "pmcConfig": {
     "startingPMCs": {
-      "enable": true,
+      "enable": false,
       "ignoreMaxBotCaps": true,
       "groupChance": 25,
       "maxGroupSize": 3,
@@ -86,7 +86,7 @@
   },
   "scavConfig": {
     "startingScavs": {
-      "enable": true,
+      "enable": false,
       "maxBotSpawns": {
         "bigmap": 5,
         "factory4_day": 3,
