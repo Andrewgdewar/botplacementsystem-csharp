@@ -53,6 +53,10 @@ public class PresetManager
     public bool RotateMainBosses { get; private set; }
     /// <summary>When true, ensure every map has the Goons squad (replace existing knight using its zone, else inject roaming).</summary>
     public bool RoamingGoonSquad { get; private set; }
+    /// <summary>When true, inject one roaming rogue squad (exUsec) on every map.</summary>
+    public bool InjectRogueSquad { get; private set; }
+    /// <summary>When true, inject one roaming raider squad (pmcBot) on every map.</summary>
+    public bool InjectRaiderSquad { get; private set; }
 
     // (boss type, [maps where it's the main boss]). Pulled from SPT_Data and confirmed
     // against the user's tuning. Used by guaranteeMainBosses / roamingBosses flags.
@@ -109,6 +113,8 @@ public class PresetManager
             PmcCapMult = 1f;
             RotateMainBosses = false;
             RoamingGoonSquad = false;
+            InjectRogueSquad = false;
+            InjectRaiderSquad = false;
             return;
         }
 
@@ -123,6 +129,8 @@ public class PresetManager
             PmcCapMult = 1f;
             RotateMainBosses = false;
             RoamingGoonSquad = false;
+            InjectRogueSquad = false;
+            InjectRaiderSquad = false;
             return;
         }
 
@@ -130,6 +138,8 @@ public class PresetManager
         PmcCapMult = preset.PmcCapMult;
         RotateMainBosses = preset.RotateMainBosses;
         RoamingGoonSquad = preset.RoamingGoonSquad;
+        InjectRogueSquad = preset.InjectRogueSquad;
+        InjectRaiderSquad = preset.InjectRaiderSquad;
 
         try
         {
@@ -139,7 +149,7 @@ public class PresetManager
             if (preset.GuaranteeMainBosses)
                 ApplyMainBossOverrides(preset.RoamingBosses);
 
-            _logger.Info($"[ABPS] Preset applied: {chosen} (scavCap x{preset.ScavCapMult:0.00}, pmcCap x{preset.PmcCapMult:0.00}, scavStart x{preset.ScavStartMult:0.00}, pmcStart x{preset.PmcStartMult:0.00}, escort='{preset.EscortAmount ?? "(base)"}', guaranteeBosses={preset.GuaranteeMainBosses}, roaming={preset.RoamingBosses}, rotateBosses={preset.RotateMainBosses}, goonSquad={preset.RoamingGoonSquad})");
+            _logger.Info($"[ABPS] Preset applied: {chosen} (scavCap x{preset.ScavCapMult:0.00}, pmcCap x{preset.PmcCapMult:0.00}, scavStart x{preset.ScavStartMult:0.00}, pmcStart x{preset.PmcStartMult:0.00}, escort='{preset.EscortAmount ?? "(base)"}', guaranteeBosses={preset.GuaranteeMainBosses}, roaming={preset.RoamingBosses}, rotateBosses={preset.RotateMainBosses}, goonSquad={preset.RoamingGoonSquad}, rogueSquad={preset.InjectRogueSquad}, raiderSquad={preset.InjectRaiderSquad})");
         }
         catch (Exception ex)
         {
@@ -231,6 +241,8 @@ public class PresetManager
                             RoamingBosses       = ReadBool(obj,  "roamingBosses",       false),
                             RotateMainBosses    = ReadBool(obj,  "rotateMainBosses",    false),
                             RoamingGoonSquad    = ReadBool(obj,  "roamingGoonSquad",    false),
+                            InjectRogueSquad    = ReadBool(obj,  "injectRogueSquad",    false),
+                            InjectRaiderSquad   = ReadBool(obj,  "injectRaiderSquad",   false),
                         };
                     }
                 }
@@ -295,5 +307,7 @@ public class PresetManager
         public bool RoamingBosses;
         public bool RotateMainBosses;
         public bool RoamingGoonSquad;
+        public bool InjectRogueSquad;
+        public bool InjectRaiderSquad;
     }
 }

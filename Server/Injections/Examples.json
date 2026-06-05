@@ -1,8 +1,8 @@
 {
     "rogue": {
-        "BossChance": 80,
+        "BossChance": 100,
         "BossDifficult": "normal",
-        "BossEscortAmount": "1",
+        "BossEscortAmount":"2,2,2,2,3",
         "BossEscortDifficult": "normal",
         "BossEscortType": "exUsec",
         "BossName": "exUsec",
@@ -24,7 +24,7 @@
         "TriggerName": ""
     },
     "raider": {
-        "BossChance": 40,
+        "BossChance": 100,
         "BossDifficult": "normal",
         "BossEscortAmount": "2,2,2,2,3",
         "BossEscortDifficult": "normal",

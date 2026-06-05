@@ -124,6 +124,27 @@ public class BossSpawns(
         }
     }
 
+    /// <summary>
+    /// Injects one roaming squad (BossZone "") from an Examples.json template on every
+    /// map. Pure injection - never replaces existing spawns. Used by the
+    /// roaming-rogue-squad / roaming-raider-squad presets.
+    /// </summary>
+    private void InjectRoamingSquad(List<BossLocationSpawn> bossesForMap, bool enabled, string templateKey)
+    {
+        if (!enabled) return;
+        if (ModConfig.InjectionExamples is null ||
+            !ModConfig.InjectionExamples.TryGetValue(templateKey, out var template) ||
+            template is null) return;
+
+        var difficultyWeights = ModConfig.Config.BossDifficulty;
+        var injected = cloner.Clone(template);
+        if (injected is null) return;
+        injected.BossDifficulty = weightedRandomHelper.GetWeightedValue(difficultyWeights);
+        injected.BossEscortDifficulty = weightedRandomHelper.GetWeightedValue(difficultyWeights);
+        bossesForMap.Add(injected); // BossZone stays "" -> roams
+        logger.Info($"[ABPS] inject-squad: added roaming '{templateKey}' ({injected.BossName})");
+    }
+
     public List<BossLocationSpawn> GetCustomMapData(string location, double escapeTimeLimit)
     {
         return GetConfigValueForLocation(location, escapeTimeLimit);
@@ -202,6 +223,8 @@ public class BossSpawns(
 
         ApplyBossRotation(bossesForMap);
         ApplyRoamingGoonSquad(bossesForMap);
+        InjectRoamingSquad(bossesForMap, presetManager.InjectRogueSquad, "rogue");
+        InjectRoamingSquad(bossesForMap, presetManager.InjectRaiderSquad, "raider");
 
         return bossesForMap;
     }

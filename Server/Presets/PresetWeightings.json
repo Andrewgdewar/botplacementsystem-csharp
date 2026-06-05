@@ -6,9 +6,11 @@
   "more-scavs-and-pmcs": 8,
   "delayed-scavs": 5,
   "delayed-pmcs": 5,
-  "main-boss-guaranteed": 8,
-  "main-boss-guaranteed-roaming": 6,
+  "main-boss-guaranteed": 10,
+  "main-boss-guaranteed-roaming": 8,
   "boss-rotation": 8,
-  "roaming-goon-squad": 8,
+  "roaming-goon-squad": 5,
+  "roaming-rogue-squad": 5,
+  "roaming-raider-squad": 5,
   "insanity": 5
 }

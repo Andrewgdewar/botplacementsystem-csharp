@@ -73,13 +73,27 @@
     "pmcStartMult": 1.0,
     "roamingGoonSquad": true
   },
+  "roaming-rogue-squad": {
+    "scavCapMult": 1.0,
+    "pmcCapMult": 1.0,
+    "scavStartMult": 1.0,
+    "pmcStartMult": 1.0,
+    "injectRogueSquad": true
+  },
+  "roaming-raider-squad": {
+    "scavCapMult": 1.0,
+    "pmcCapMult": 1.0,
+    "scavStartMult": 1.0,
+    "pmcStartMult": 1.0,
+    "injectRaiderSquad": true
+  },
   "insanity": {
     "scavCapMult": 2,
     "pmcCapMult": 2,
     "scavStartMult": 1.4,
     "pmcStartMult": 1.4,
-    "guaranteeMainBosses": true,
-    "roamingBosses": true,
+    "rotateMainBosses": true,
+    "roamingGoonSquad": true,
     "escortAmount": "1,2,2,2,2,2,2,2,2,3,4"
   }
 }
