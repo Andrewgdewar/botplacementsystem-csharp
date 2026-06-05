@@ -84,6 +84,46 @@ public class BossSpawns(
         }
     }
 
+    /// <summary>
+    /// roaming-goon-squad preset: guarantee the Goons squad on every map. If the map
+    /// already has a knight, replace it with our example version keeping the map's zone.
+    /// If no knight is present, inject our example as-is (BossZone "" = roams anywhere).
+    /// </summary>
+    private void ApplyRoamingGoonSquad(List<BossLocationSpawn> bossesForMap)
+    {
+        if (!presetManager.RoamingGoonSquad) return;
+        if (ModConfig.InjectionExamples is null ||
+            !ModConfig.InjectionExamples.TryGetValue("knight", out var knightTemplate) ||
+            knightTemplate is null) return;
+
+        var difficultyWeights = ModConfig.Config.BossDifficulty;
+        var foundKnight = false;
+
+        for (var i = 0; i < bossesForMap.Count; i++)
+        {
+            if (bossesForMap[i].BossName != "bossKnight") continue;
+
+            var replacement = cloner.Clone(knightTemplate);
+            if (replacement is null) continue;
+            replacement.BossZone = bossesForMap[i].BossZone; // adopt the map's knight zone
+            replacement.BossDifficulty = weightedRandomHelper.GetWeightedValue(difficultyWeights);
+            replacement.BossEscortDifficulty = weightedRandomHelper.GetWeightedValue(difficultyWeights);
+            bossesForMap[i] = replacement;
+            foundKnight = true;
+            logger.Info($"[ABPS] roaming-goon-squad: replaced map knight @ zone='{replacement.BossZone}'");
+        }
+
+        if (!foundKnight)
+        {
+            var injected = cloner.Clone(knightTemplate);
+            if (injected is null) return;
+            injected.BossDifficulty = weightedRandomHelper.GetWeightedValue(difficultyWeights);
+            injected.BossEscortDifficulty = weightedRandomHelper.GetWeightedValue(difficultyWeights);
+            bossesForMap.Add(injected); // BossZone stays "" -> roams
+            logger.Info($"[ABPS] roaming-goon-squad: injected roaming knight (no existing knight)");
+        }
+    }
+
     public List<BossLocationSpawn> GetCustomMapData(string location, double escapeTimeLimit)
     {
         return GetConfigValueForLocation(location, escapeTimeLimit);
@@ -161,6 +201,7 @@ public class BossSpawns(
         }
 
         ApplyBossRotation(bossesForMap);
+        ApplyRoamingGoonSquad(bossesForMap);
 
         return bossesForMap;
     }

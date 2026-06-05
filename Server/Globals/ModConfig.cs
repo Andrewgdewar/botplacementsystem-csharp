@@ -27,6 +27,7 @@ public class ModConfig : IOnLoad
     public static HostilityDefaults? HostilityDefaults { get; private set; }
     /// <summary>Pool of main bosses used by the boss-rotation preset (Injections/MainBosses.json).</summary>
     public static List<BossLocationSpawn>? MainBossRotationPool { get; private set; }
+    public static Dictionary<string, BossLocationSpawn>? InjectionExamples { get; private set; }
     public static AbpsConfig Config {get; private set;} = null!;
     public static AbpsConfig OriginalConfig {get; private set;} = null!;
     
@@ -57,6 +58,7 @@ public class ModConfig : IOnLoad
         ScavDefaults = await _jsonUtil.DeserializeFromFileAsync<ScavDefaults>(_modPath + "/Defaults/Scavs.json") ?? throw new ArgumentNullException();
         HostilityDefaults = await _jsonUtil.DeserializeFromFileAsync<HostilityDefaults>(_modPath + "/Defaults/Hostility.json") ?? throw new ArgumentNullException();
         MainBossRotationPool = await _jsonUtil.DeserializeFromFileAsync<List<BossLocationSpawn>>(_modPath + "/Injections/MainBosses.json") ?? new List<BossLocationSpawn>();
+        InjectionExamples = await _jsonUtil.DeserializeFromFileAsync<Dictionary<string, BossLocationSpawn>>(_modPath + "/Injections/Examples.json") ?? new Dictionary<string, BossLocationSpawn>();
     }
     
     public static async Task<ConfigOperationResult> ReloadConfig()

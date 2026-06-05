@@ -66,6 +66,13 @@
     "pmcStartMult": 1.0,
     "rotateMainBosses": true
   },
+  "roaming-goon-squad": {
+    "scavCapMult": 1.0,
+    "pmcCapMult": 1.0,
+    "scavStartMult": 1.0,
+    "pmcStartMult": 1.0,
+    "roamingGoonSquad": true
+  },
   "insanity": {
     "scavCapMult": 2,
     "pmcCapMult": 2,

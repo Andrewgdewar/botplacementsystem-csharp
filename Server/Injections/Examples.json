@@ -48,7 +48,7 @@
         "TriggerName": ""
     },
     "knight": {
-        "BossChance": 30,
+        "BossChance": 100,
         "BossDifficult": "normal",
         "BossEscortAmount": "4",
         "BossEscortDifficult": "normal",
