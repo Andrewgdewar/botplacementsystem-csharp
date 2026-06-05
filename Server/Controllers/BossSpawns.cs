@@ -76,6 +76,7 @@ public class BossSpawns(
                 foreach (var bossSpawn in bossDefaultData)
                 {
                     bossDefaultData[0].BossDifficulty = weightedRandomHelper.GetWeightedValue(difficultyWeights);
+                    ApplyPerformanceCaps(bossSpawn);
                     bossesForMap.Add(bossSpawn);
                 }
                 if (!(bossData.AddExtraSpawns ?? false)) continue;
@@ -117,6 +118,7 @@ public class BossSpawns(
             bossDefaultData[0].BossDifficulty = weightedRandomHelper.GetWeightedValue(difficultyWeights);
             bossDefaultData[0].BossEscortDifficulty = weightedRandomHelper.GetWeightedValue(difficultyWeights);
             bossDefaultData[0].Time = bossData.Time;
+            ApplyPerformanceCaps(bossDefaultData[0]);
             bossesForMap.Add(bossDefaultData[0]);
         }
 
