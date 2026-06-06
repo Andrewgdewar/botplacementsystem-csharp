@@ -220,7 +220,7 @@ namespace acidphantasm_botplacementsystem
             _customsMapLimit = config.Bind(
                 GeneralConfig,
                 "Max Bots - Customs",
-                23,
+                26,
                 new ConfigDescription("Max bots allowed on map, value is ignored by certain bots.\nStarting PMCs ignore the cap by default, if you want to change this you must do so in the server config.\n\nChanges do not take effect until next raid.",
                 new AcceptableValueRange<int>(1, 50),
                 new ConfigurationManagerAttributes { Order = _loadOrder-- }));
@@ -240,7 +240,7 @@ namespace acidphantasm_botplacementsystem
             _interchangeMapLimit = config.Bind(
                 GeneralConfig,
                 "Max Bots - Interchange",
-                22,
+                28,
                 new ConfigDescription("Max bots allowed on map, value is ignored by certain bots.\nStarting PMCs ignore the cap by default, if you want to change this you must do so in the server config.\n\nChanges do not take effect until next raid.",
                 new AcceptableValueRange<int>(1, 50),
                 new ConfigurationManagerAttributes { Order = _loadOrder-- }));
@@ -260,7 +260,7 @@ namespace acidphantasm_botplacementsystem
             _lighthouseMapLimit = config.Bind(
                 GeneralConfig,
                 "Max Bots - Lighthouse",
-                22,
+                28,
                 new ConfigDescription("Max bots allowed on map, value is ignored by certain bots.\nStarting PMCs ignore the cap by default, if you want to change this you must do so in the server config.\n\nChanges do not take effect until next raid.",
                 new AcceptableValueRange<int>(1, 50),
                 new ConfigurationManagerAttributes { Order = _loadOrder-- }));
@@ -270,7 +270,7 @@ namespace acidphantasm_botplacementsystem
             _reserveMapLimit = config.Bind(
                 GeneralConfig,
                 "Max Bots - Reserve",
-                22,
+                28,
                 new ConfigDescription("Max bots allowed on map, value is ignored by certain bots.\nStarting PMCs ignore the cap by default, if you want to change this you must do so in the server config.\n\nChanges do not take effect until next raid.",
                 new AcceptableValueRange<int>(1, 50),
                 new ConfigurationManagerAttributes { Order = _loadOrder-- }));
@@ -290,7 +290,7 @@ namespace acidphantasm_botplacementsystem
             _shorelineMapLimit = config.Bind(
                 GeneralConfig,
                 "Max Bots - Shoreline",
-                22,
+                28,
                 new ConfigDescription("Max bots allowed on map, value is ignored by certain bots.\nStarting PMCs ignore the cap by default, if you want to change this you must do so in the server config.\n\nChanges do not take effect until next raid.",
                 new AcceptableValueRange<int>(1, 50),
                 new ConfigurationManagerAttributes { Order = _loadOrder-- }));
@@ -300,7 +300,7 @@ namespace acidphantasm_botplacementsystem
             _streetsMapLimit = config.Bind(
                 GeneralConfig,
                 "Max Bots - Streets",
-                23,
+                29,
                 new ConfigDescription("Max bots allowed on map, value is ignored by certain bots.\nStarting PMCs ignore the cap by default, if you want to change this you must do so in the server config.\n\nChanges do not take effect until next raid.",
                 new AcceptableValueRange<int>(1, 50),
                 new ConfigurationManagerAttributes { Order = _loadOrder-- }));
@@ -310,7 +310,7 @@ namespace acidphantasm_botplacementsystem
             _woodsMapLimit = config.Bind(
                 GeneralConfig,
                 "Max Bots - Woods",
-                22,
+                28,
                 new ConfigDescription("Max bots allowed on map, value is ignored by certain bots.\nStarting PMCs ignore the cap by default, if you want to change this you must do so in the server config.\n\nChanges do not take effect until next raid.",
                 new AcceptableValueRange<int>(1, 50),
                 new ConfigurationManagerAttributes { Order = _loadOrder-- }));
@@ -813,7 +813,7 @@ namespace acidphantasm_botplacementsystem
             _pickBiasPower = config.Bind(
                 GeneralConfig,
                 "Pick Bias Power",
-                0.8f,
+                0.6f,
                 new ConfigDescription("Steepness of the scav weighted pick. 0 = uniform random across the top 80 candidates. 0.6 = spread (recommended). 1.0 = moderate close-bias. 1.6 = strong. 2.5+ = almost always closest.",
                     new AcceptableValueRange<float>(0f, 3f),
                     new ConfigurationManagerAttributes { Order = _loadOrder-- }));
@@ -863,7 +863,7 @@ namespace acidphantasm_botplacementsystem
             _perPlayerScavMultiplier = config.Bind(
                 GeneralConfig,
                 "Per-Player Scav Multiplier",
-                0.3f,
+                0.15f,
                 new ConfigDescription("How much each extra player past the first scales the scav spawn budget.\n0.0 = same budget for any player count.\n0.2 = 5 players get 1.8x the solo budget (recommended).\n1.0 = vanilla acid behaviour: 5 players get 5x the solo budget.",
                     new AcceptableValueRange<float>(0f, 1f),
                     new ConfigurationManagerAttributes { Order = _loadOrder-- }));
