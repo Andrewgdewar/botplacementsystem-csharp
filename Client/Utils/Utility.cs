@@ -120,6 +120,7 @@ namespace acidphantasm_botplacementsystem.Utils
             LastPmcSpawnAttemptTime = 0f;
             RaidBotStart = 0f;
             RaidBotStop = 0f;
+            Spawning.SpawnRateLimiter.Reset();
             
             // Recache spawn points now
             _allSpawnPoints = SpawnPointManagerClass.CreateFromScene().ToList();

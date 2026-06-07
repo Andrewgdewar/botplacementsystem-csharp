@@ -153,6 +153,20 @@ namespace acidphantasm_botplacementsystem.Patches
                 Utility.CurrentMapZones = ___botsController_0.BotSpawner.AllBotZones.ToList();
             }
 
+            // Rolling-window rate limit: gate scav spawns when the recent budget is full.
+            // PMC groups consume the same budget; boss/marksman are never gated.
+            var nowRaid = ___abstractGame_0.PastTime;
+            if (!Spawning.SpawnRateLimiter.CanSpawn(1, nowRaid))
+            {
+                if (Plugin.SpawnRateLimitDebugLogging)
+                {
+                    Plugin.LogSource.LogInfo(
+                        $"[ABPS RateLimit] Scav gated @ {nowRaid:0.0}s | " +
+                        $"limited-in-window={Spawning.SpawnRateLimiter.LimitedCountInWindow(nowRaid)}/{Plugin.SpawnRateLimitPerWindow}");
+                }
+                return false;
+            }
+
             var botZone = GetValidBotZone(WildSpawnType.assault, 1, ___botsController_0.BotSpawner.AllBotZones, mapName, ___botsController_0);
             ___botsController_0.ActivateBotsByWave(new BotWaveDataClass
             {
@@ -166,6 +180,7 @@ namespace acidphantasm_botplacementsystem.Patches
                 WithCheckMinMax = false,
                 ChanceGroup = 0,
             });
+            Spawning.SpawnRateLimiter.Record(1, nowRaid, "scav", true);
             Utility.BotsSpawnedPerPlayer += 1d / Math.Max(1d, 1d + Plugin.PerPlayerScavMultiplier * Math.Max(0, Utility.CachedConnectedPlayers.Count - 1));
 
             if (!(Time.time >= _nextDespawnCheckTime) || !Plugin.DespawnFurthest)

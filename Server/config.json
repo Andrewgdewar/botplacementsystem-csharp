@@ -78,7 +78,7 @@
       "maxGroupSize": 2,
       "maxGroupCount": 3,
       "maxBotsPerWave": 4,
-      "escortAmount": "0,0,0,0,1,1,2,3",
+      "escortAmount": "0,0,0,0,0,1,1,1,1,2,3",
       "delayBeforeFirstWave": 30,
       "secondsBetweenWaves": 360,
       "stopWavesBeforeEndOfRaidLimit": 300
@@ -103,20 +103,35 @@
         "labyrinth": 0
       },
       "startingMarksman": true,
-      "marksmanTimeMin": 60,
-      "marksmanTimeMax": 300
+      "marksmanTimeMin": -1,
+      "marksmanTimeMax": 180,
+      "maxMarksmanSpawns": {
+        "bigmap": 3,
+        "factory4_day": 0,
+        "factory4_night": 0,
+        "interchange": 0,
+        "laboratory": 0,
+        "lighthouse": 1,
+        "rezervbase": 0,
+        "sandbox": 2,
+        "sandbox_high": 2,
+        "shoreline": 3,
+        "tarkovstreets": 4,
+        "woods": 1,
+        "labyrinth": 0
+      }
     },
     "waves": {
       "enable": true,
       "enableCustomTimers": true,
       "allowScavsOnLaboratory": false,
       "allowScavsOnLabyrinth": false,
-      "startSpawns": 60,
+      "startSpawns": 15,
       "stopSpawns": 600,
       "activeTimeMin": 40,
       "activeTimeMax": 50,
-      "quietTimeMin": 40,
-      "quietTimeMax": 50,
+      "quietTimeMin": 1,
+      "quietTimeMax": 1,
       "checkToSpawnTimer": 15,
       "pendingBotsToTrigger": 1,
       "nonWaveSpawnBotsLimitPerPlayer": 20

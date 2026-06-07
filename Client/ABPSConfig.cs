@@ -98,6 +98,12 @@ namespace acidphantasm_botplacementsystem
         private static ConfigEntry<float> _woodsScavSpawnDistanceCheck;
         private static ConfigEntry<float> _labyrinthScavSpawnDistanceCheck;
         
+        private const string RateLimitConfig = "5b. Spawn Rate Limit";
+        private static ConfigEntry<bool> _spawnRateLimitEnabled;
+        private static ConfigEntry<int> _spawnRateLimitPerWindow;
+        private static ConfigEntry<int> _spawnRateLimitWindowSeconds;
+        private static ConfigEntry<bool> _spawnRateLimitDebugLogging;
+
         private const string DebugConfig = "6. Debug Settings";
         private static ConfigEntry<bool> _enableDebug;
         private static ConfigEntry<float> _directionalBias;
@@ -658,6 +664,46 @@ namespace acidphantasm_botplacementsystem
             Plugin.HotzoneScavChance = _hotzoneScavChance.Value;
             _hotzoneScavChance.SettingChanged += ABPS_SettingChanged;
 
+            _spawnRateLimitEnabled = config.Bind(
+                RateLimitConfig,
+                "Enabled",
+                true,
+                new ConfigDescription("Limit total bots spawned across a rolling time window to reduce lag spikes.\nGates scavs only - PMC groups consume the budget but are never blocked, and boss/marksman spawns are never limited.",
+                null,
+                new ConfigurationManagerAttributes { Order = _loadOrder-- }));
+            Plugin.SpawnRateLimitEnabled = _spawnRateLimitEnabled.Value;
+            _spawnRateLimitEnabled.SettingChanged += ABPS_SettingChanged;
+
+            _spawnRateLimitPerWindow = config.Bind(
+                RateLimitConfig,
+                "Bots Per Window",
+                5,
+                new ConfigDescription("Max bots (scavs + PMCs) allowed to spawn within the rolling window before scavs are throttled.",
+                new AcceptableValueRange<int>(1, 50),
+                new ConfigurationManagerAttributes { Order = _loadOrder-- }));
+            Plugin.SpawnRateLimitPerWindow = _spawnRateLimitPerWindow.Value;
+            _spawnRateLimitPerWindow.SettingChanged += ABPS_SettingChanged;
+
+            _spawnRateLimitWindowSeconds = config.Bind(
+                RateLimitConfig,
+                "Window Seconds",
+                60,
+                new ConfigDescription("Length of the rolling window in seconds. Ex..5 bots per 60 seconds.",
+                new AcceptableValueRange<int>(5, 600),
+                new ConfigurationManagerAttributes { Order = _loadOrder-- }));
+            Plugin.SpawnRateLimitWindowSeconds = _spawnRateLimitWindowSeconds.Value;
+            _spawnRateLimitWindowSeconds.SettingChanged += ABPS_SettingChanged;
+
+            _spawnRateLimitDebugLogging = config.Bind(
+                RateLimitConfig,
+                "Debug Logging",
+                false,
+                new ConfigDescription("Log every recorded spawn (scav/pmc/boss/marksman) with rolling-window counts for review.",
+                null,
+                new ConfigurationManagerAttributes { Order = _loadOrder-- }));
+            Plugin.SpawnRateLimitDebugLogging = _spawnRateLimitDebugLogging.Value;
+            _spawnRateLimitDebugLogging.SettingChanged += ABPS_SettingChanged;
+
             _customsScavSpawnDistanceCheck = config.Bind(
                 ScavConfig, 
                 "Distance Limit - Customs", 
@@ -1037,6 +1083,11 @@ namespace acidphantasm_botplacementsystem
             Plugin.StreetsPmcSpawnDistanceCheck = _streetsPmcSpawnDistanceCheck.Value;
             Plugin.WoodsPmcSpawnDistanceCheck = _woodsPmcSpawnDistanceCheck.Value;
             Plugin.LabyrinthPmcSpawnDistanceCheck = _labyrinthPmcSpawnDistanceCheck.Value;
+
+            Plugin.SpawnRateLimitEnabled = _spawnRateLimitEnabled.Value;
+            Plugin.SpawnRateLimitPerWindow = _spawnRateLimitPerWindow.Value;
+            Plugin.SpawnRateLimitWindowSeconds = _spawnRateLimitWindowSeconds.Value;
+            Plugin.SpawnRateLimitDebugLogging = _spawnRateLimitDebugLogging.Value;
 
             Plugin.SoftCap = _softCap.Value;
             Plugin.PScavChance = _pScavChance.Value;

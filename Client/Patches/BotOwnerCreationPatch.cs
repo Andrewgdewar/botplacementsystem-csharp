@@ -1,5 +1,7 @@
 ﻿using System.Reflection;
+using acidphantasm_botplacementsystem.Spawning;
 using acidphantasm_botplacementsystem.Utils;
+using Comfort.Common;
 using EFT;
 using HarmonyLib;
 using SPT.Reflection.Patching;
@@ -34,12 +36,21 @@ namespace acidphantasm_botplacementsystem.Patches
                 }
                 return;
             }
+            // Marksman (snipers) come through the vanilla wave system, not the ABPS scav
+            // tick. Record for log visibility only - never gated by the rate limiter.
+            if (player.Profile.Info.Settings.Role is WildSpawnType.marksman)
+            {
+                SpawnRateLimiter.Record(1, Singleton<AbstractGame>.Instance?.PastTime ?? 0f, "marksman", false);
+                return;
+            }
             if (player.Profile.Info.Settings.IsBossOrFollower())
             {
                 lock (Utility.SpawnPointLock)
                 {
                     Utility.CachedBosses.Add(player);
                 }
+                // Observation only - boss entourages are never gated by the rate limiter.
+                SpawnRateLimiter.Record(1, Singleton<AbstractGame>.Instance?.PastTime ?? 0f, "boss", false);
                 return;
             }
         }

@@ -60,7 +60,6 @@
     "Zone_TreatmentContainers",
     "Zone_TreatmentBeach",
     "Zone_Hellicopter",
-    "Zone_SniperPeak",
     "Zone_Island"
   ],
   "LighthouseWaterTreatmentSpawnZones": [
@@ -155,7 +154,6 @@
     "ZoneHouse",
     "ZoneBigRocks",
     "ZoneRoad",
-    "ZoneHighRocks",
     "ZoneMiniHouse",
     "ZoneRedHouse",
     "ZoneScavBase2",

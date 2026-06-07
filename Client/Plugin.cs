@@ -19,6 +19,13 @@ namespace acidphantasm_botplacementsystem
         public static bool DespawnPmcs;
         public static float DespawnDistance;
         public static float DespawnTimer;
+
+        // Rolling-window spawn rate limiter (gates scavs only; pmc consumes budget;
+        // boss/marksman observed but never limited).
+        public static bool SpawnRateLimitEnabled;
+        public static int SpawnRateLimitPerWindow;
+        public static float SpawnRateLimitWindowSeconds;
+        public static bool SpawnRateLimitDebugLogging;
         
         public static int CustomsMapLimit;
         public static int FactoryMapLimit;
