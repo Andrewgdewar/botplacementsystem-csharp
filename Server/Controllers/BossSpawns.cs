@@ -25,13 +25,12 @@ public class BossSpawns(
     // Mirrors MOAR's bossPerformanceHash: caps heavy boss entourages (and a couple of
     // chances) to reduce bot load. EscortAmount is a weighted comma list SPT rolls per
     // spawn; Chance (when set) overrides the configured spawn chance for that boss.
-    private static readonly Dictionary<string, (string? EscortAmount, int? Chance)> BossPerformanceCaps = new()
+    private static readonly Dictionary<string, (string? EscortAmount, int? Chance, bool DropSupports)> BossPerformanceCaps = new()
     {
-        ["bossZryachiy"] = ("0", 50),     // Lighthouse: halve chance, drop escort
-        ["exUsec"]       = ("1", 40),     // Roaming rogues: cap pack to 1 follower
-        ["bossBully"]    = ("2,3", null), // Reshala escort capped
-        ["bossBoar"]     = ("1,2,2,2", null), // Boar (streets) escort capped
-        ["bossKojaniy"]  = ("1,2,2", null),   // Shturman escort capped
+        ["bossZryachiy"] = ("1,1,1,1,2", 50, true),  // Lighthouse: halve chance, vary escort (mostly 1)
+        ["bossBully"]    = ("2,3", null, true),       // Reshala escort capped
+        ["bossBoar"]     = ("1,2,2,2", null, false),  // Boar (streets) escort capped, KEEP supports
+        ["bossKojaniy"]  = ("1,2,2", null, true),     // Shturman escort capped
     };
 
     private static void ApplyPerformanceCaps(BossLocationSpawn? spawn)
@@ -42,7 +41,7 @@ public class BossSpawns(
         if (cap.EscortAmount is not null)
         {
             spawn.BossEscortAmount = cap.EscortAmount;
-            spawn.Supports = null!; // drop heavy support groups (e.g. Boar close guards)
+            if (cap.DropSupports) spawn.Supports = null!; // drop heavy support groups (e.g. Zryachiy snipers)
         }
         if (cap.Chance is not null) spawn.BossChance = cap.Chance.Value;
     }
@@ -178,6 +177,10 @@ public class BossSpawns(
                 {
                     bossDefaultData[0].BossDifficulty = weightedRandomHelper.GetWeightedValue(difficultyWeights);
                     ApplyPerformanceCaps(bossSpawn);
+                    // exUsec roaming rogues on Lighthouse: keep vanilla per-zone escorts/chances
+                    // but shave 30% off each zone whose chance is above 20, to reduce bot load.
+                    if (boss == "exUsec" && location == "lighthouse" && (bossSpawn.BossChance ?? 0) > 20)
+                        bossSpawn.BossChance = (bossSpawn.BossChance ?? 0) - 30;
                     bossesForMap.Add(bossSpawn);
                 }
                 if (!(bossData.AddExtraSpawns ?? false)) continue;
