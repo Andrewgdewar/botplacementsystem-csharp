@@ -102,7 +102,9 @@
         "woods": 5,
         "labyrinth": 0
       },
-      "startingMarksman": true
+      "startingMarksman": true,
+      "marksmanTimeMin": 60,
+      "marksmanTimeMax": 300
     },
     "waves": {
       "enable": true,

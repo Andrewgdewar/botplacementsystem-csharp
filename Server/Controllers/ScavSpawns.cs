@@ -122,8 +122,8 @@ public class ScavSpawns(
             
             scavDefaultData.SlotsMin = botRole == "assault" ? 0 : 1;
             scavDefaultData.SlotsMax = botRole == "assault" ? 1 : 2;
-            scavDefaultData.TimeMin = botRole == "assault" ? 3 : -1;
-            scavDefaultData.TimeMax = botRole == "assault" ? 5 : -1;
+            scavDefaultData.TimeMin = botRole == "assault" ? 3 : ModConfig.Config.ScavConfig.StartingScavs.MarksmanTimeMin ?? 60;
+            scavDefaultData.TimeMax = botRole == "assault" ? 5 : ModConfig.Config.ScavConfig.StartingScavs.MarksmanTimeMax ?? 300;
             scavDefaultData.Number = currentCount;
             scavDefaultData.WildSpawnType = botRole == "assault" ? WildSpawnType.assault : WildSpawnType.marksman;
             scavDefaultData.IsPlayers = botRole == "assault" && randomUtil.GetChance100(10); // <- This doesn't actually matter because the client handles it in this version

@@ -418,6 +418,10 @@ public record ScavStartingConfig
     [JsonPropertyName("enable")] public bool Enable { get; set; }
     [JsonPropertyName("maxBotSpawns")] public required ValidLocationInt MaxBotSpawns { get; set; }
     [JsonPropertyName("startingMarksman")] public bool StartingMarksman { get; set; }
+    // Marksman (sniper) wave spawn-time window in seconds. The wave fires at a random
+    // time within [min, max]. Defaults to 60-300 (1-5 min) if omitted.
+    [JsonPropertyName("marksmanTimeMin")] public int? MarksmanTimeMin { get; set; }
+    [JsonPropertyName("marksmanTimeMax")] public int? MarksmanTimeMax { get; set; }
 }
 
 public record ScavConfig
