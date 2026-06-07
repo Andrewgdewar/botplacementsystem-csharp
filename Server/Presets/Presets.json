@@ -1,0 +1,99 @@
+{
+  "live-like": {
+    "scavCapMult": 1.0,
+    "pmcCapMult": 1.0,
+    "scavStartMult": 1.0,
+    "pmcStartMult": 1.0
+  },
+  "quiet-raids": {
+    "scavCapMult": 0.6,
+    "pmcCapMult": 0.6,
+    "scavStartMult": 0.6,
+    "pmcStartMult": 0.6,
+    "escortAmount": "0"
+  },
+  "more-scavs": {
+    "scavCapMult": 1.5,
+    "pmcCapMult": 0.7,
+    "scavStartMult": 1.0,
+    "pmcStartMult": 1.0
+  },
+  "more-pmcs": {
+    "scavCapMult": 0.7,
+    "pmcCapMult": 1.3,
+    "scavStartMult": 1.0,
+    "pmcStartMult": 1.0,
+    "escortAmount": "1,1,1,1,1,1,1,2,2,2,2,2,3"
+  },
+  "more-scavs-and-pmcs": {
+    "scavCapMult": 1.4,
+    "pmcCapMult": 1.2,
+    "scavStartMult": 1.0,
+    "pmcStartMult": 1.0,
+    "escortAmount": "1,1,1,1,1,1,1,2,2,2,2,2,3"
+  },
+  "delayed-scavs": {
+    "scavCapMult": 1.0,
+    "pmcCapMult": 1.0,
+    "scavStartMult": 0.0,
+    "pmcStartMult": 1.0
+  },
+  "delayed-pmcs": {
+    "scavCapMult": 1.0,
+    "pmcCapMult": 1.0,
+    "scavStartMult": 1.0,
+    "pmcStartMult": 0.0
+  },
+  "main-boss-guaranteed": {
+    "scavCapMult": 1.0,
+    "pmcCapMult": 1.0,
+    "scavStartMult": 1.0,
+    "pmcStartMult": 1.0,
+    "guaranteeMainBosses": true
+  },
+  "main-boss-guaranteed-roaming": {
+    "scavCapMult": 1.0,
+    "pmcCapMult": 1.0,
+    "scavStartMult": 1.0,
+    "pmcStartMult": 1.0,
+    "guaranteeMainBosses": true,
+    "roamingBosses": true
+  },
+  "boss-rotation": {
+    "scavCapMult": 1.0,
+    "pmcCapMult": 1.0,
+    "scavStartMult": 1.0,
+    "pmcStartMult": 1.0,
+    "rotateMainBosses": true
+  },
+  "roaming-goon-squad": {
+    "scavCapMult": 1.0,
+    "pmcCapMult": 1.0,
+    "scavStartMult": 1.0,
+    "pmcStartMult": 1.0,
+    "roamingGoonSquad": true
+  },
+  "roaming-rogue-squad": {
+    "scavCapMult": 1.0,
+    "pmcCapMult": 1.0,
+    "scavStartMult": 1.0,
+    "pmcStartMult": 1.0,
+    "injectRogueSquad": true
+  },
+  "roaming-raider-squad": {
+    "scavCapMult": 1.0,
+    "pmcCapMult": 1.0,
+    "scavStartMult": 1.0,
+    "pmcStartMult": 1.0,
+    "injectRaiderSquad": true
+  },
+  "insanity": {
+    "scavCapMult": 2,
+    "pmcCapMult": 2,
+    "scavStartMult": 1.4,
+    "pmcStartMult": 1.4,
+    "rotateMainBosses": true,
+    "roamingGoonSquad": true,
+    "escortAmount": "1,1,1,1,1,1,1,2,2,2,2,2,3"
+  }
+}

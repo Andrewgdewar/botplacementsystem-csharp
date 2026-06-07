@@ -16,7 +16,8 @@ public class MapSpawns(
     PmcSpawns pmcSpawns,
     VanillaAdjustments vanillaAdjustments,
     ICloner cloner,
-    DatabaseService databaseService)
+    DatabaseService databaseService,
+    PresetManager presetManager)
 {
     private List<string> _validMaps =
     [
@@ -43,6 +44,11 @@ public class MapSpawns(
 
     public void ConfigureInitialData()
     {
+        // Roll a preset (or restore to live-like) before any cache rebuild uses
+        // ModConfig.Config. The preset overlay must be in place for the whole
+        // pipeline below.
+        presetManager.RollAndApply();
+
         _locationData = databaseService.GetLocations().GetDictionary();
 
         foreach (var map in _validMaps)
@@ -51,18 +57,23 @@ public class MapSpawns(
             _locationData[actualKey].Base.BossLocationSpawn = [];
             _botMapCache[map] = [];
             _scavMapCache[map] = [];
+            // Snipers (marksman) ride the OLD wave spawn system, so it must stay on
+            // whenever starting scavs OR starting marksman are enabled - otherwise the
+            // generated sniper waves never fire even though StartingMarksman is true.
+            var oldSpawnNeeded = ModConfig.Config.ScavConfig.StartingScavs.Enable
+                                 || ModConfig.Config.ScavConfig.StartingScavs.StartingMarksman;
             switch (ModConfig.Config.ScavConfig.Waves.Enable)
             {
-                case true when ModConfig.Config.ScavConfig.StartingScavs.Enable:
+                case true when oldSpawnNeeded:
                     vanillaAdjustments.EnableAllSpawnSystems(_locationData[actualKey].Base);
                     break;
-                case false when ModConfig.Config.ScavConfig.StartingScavs.Enable:
+                case false when oldSpawnNeeded:
                     vanillaAdjustments.DisableNewSpawnSystem(_locationData[actualKey].Base);
                     break;
-                case false when !ModConfig.Config.ScavConfig.StartingScavs.Enable:
+                case false when !oldSpawnNeeded:
                     vanillaAdjustments.DisableAllSpawnSystems(_locationData[actualKey].Base);
                     break;
-                case true when !ModConfig.Config.ScavConfig.StartingScavs.Enable:
+                case true when !oldSpawnNeeded:
                     vanillaAdjustments.DisableOldSpawnSystem(_locationData[actualKey].Base);
                     break;
             }

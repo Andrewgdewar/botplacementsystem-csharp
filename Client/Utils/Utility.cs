@@ -120,6 +120,7 @@ namespace acidphantasm_botplacementsystem.Utils
             LastPmcSpawnAttemptTime = 0f;
             RaidBotStart = 0f;
             RaidBotStop = 0f;
+            Spawning.SpawnRateLimiter.Reset();
             
             // Recache spawn points now
             _allSpawnPoints = SpawnPointManagerClass.CreateFromScene().ToList();
@@ -252,10 +253,11 @@ namespace acidphantasm_botplacementsystem.Utils
         /// Per-map total PMC count for the raid. Single source of truth used by both
         /// PmcSpawnHookPatch (starting PMCs runtime cap), NonWavesSpawnSystemPatch
         /// (wave PMC tick), and TryToSpawnInZonePatch (deterministic index spacing).
+        /// The returned value already includes the active preset's PMC cap multiplier.
         /// </summary>
         public static int GetMaxPmcsForMap(string mapName)
         {
-            return mapName switch
+            var baseline = mapName switch
             {
                 "bigmap" => Plugin.CustomsMaxPmcs,
                 "factory4_day" or "factory4_night" => Plugin.FactoryMaxPmcs,
@@ -271,15 +273,17 @@ namespace acidphantasm_botplacementsystem.Utils
                 "labyrinth" => Plugin.LabyrinthMaxPmcs,
                 _ => 0,
             };
+            return ApplyPresetMult(baseline, Plugin.PresetPmcCapMult);
         }
 
         /// <summary>
         /// Per-map total scav count for the raid (1-player baseline; scaled at spawn
-        /// time by PerPlayerScavMultiplier).
+        /// time by PerPlayerScavMultiplier). The returned value already includes the
+        /// active preset's scav cap multiplier.
         /// </summary>
         public static int GetMaxScavsForMap(string mapName)
         {
-            return mapName switch
+            var baseline = mapName switch
             {
                 "bigmap" => Plugin.CustomsMaxScavs,
                 "factory4_day" or "factory4_night" => Plugin.FactoryMaxScavs,
@@ -295,6 +299,14 @@ namespace acidphantasm_botplacementsystem.Utils
                 "labyrinth" => Plugin.LabyrinthMaxScavs,
                 _ => 0,
             };
+            return ApplyPresetMult(baseline, Plugin.PresetScavCapMult);
+        }
+
+        private static int ApplyPresetMult(int baseline, float mult)
+        {
+            if (baseline <= 0) return 0;
+            if (mult <= 0f) return 0;
+            return Mathf.Max(1, Mathf.RoundToInt(baseline * mult));
         }
         
         /// <summary>

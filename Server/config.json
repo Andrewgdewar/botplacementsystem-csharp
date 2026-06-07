@@ -10,7 +10,7 @@
   },
   "pmcConfig": {
     "startingPMCs": {
-      "enable": true,
+      "enable": false,
       "ignoreMaxBotCaps": true,
       "groupChance": 25,
       "maxGroupSize": 3,
@@ -78,6 +78,7 @@
       "maxGroupSize": 2,
       "maxGroupCount": 3,
       "maxBotsPerWave": 4,
+      "escortAmount": "0,0,0,0,0,1,1,1,1,2,3",
       "delayBeforeFirstWave": 30,
       "secondsBetweenWaves": 360,
       "stopWavesBeforeEndOfRaidLimit": 300
@@ -85,7 +86,7 @@
   },
   "scavConfig": {
     "startingScavs": {
-      "enable": true,
+      "enable": false,
       "maxBotSpawns": {
         "bigmap": 5,
         "factory4_day": 3,
@@ -101,19 +102,36 @@
         "woods": 5,
         "labyrinth": 0
       },
-      "startingMarksman": true
+      "startingMarksman": true,
+      "marksmanTimeMin": -1,
+      "marksmanTimeMax": 180,
+      "maxMarksmanSpawns": {
+        "bigmap": 3,
+        "factory4_day": 0,
+        "factory4_night": 0,
+        "interchange": 0,
+        "laboratory": 0,
+        "lighthouse": 1,
+        "rezervbase": 0,
+        "sandbox": 2,
+        "sandbox_high": 2,
+        "shoreline": 3,
+        "tarkovstreets": 4,
+        "woods": 1,
+        "labyrinth": 0
+      }
     },
     "waves": {
       "enable": true,
       "enableCustomTimers": true,
       "allowScavsOnLaboratory": false,
       "allowScavsOnLabyrinth": false,
-      "startSpawns": 60,
+      "startSpawns": 15,
       "stopSpawns": 600,
-      "activeTimeMin": 180,
-      "activeTimeMax": 240,
-      "quietTimeMin": 120,
-      "quietTimeMax": 180,
+      "activeTimeMin": 40,
+      "activeTimeMax": 50,
+      "quietTimeMin": 1,
+      "quietTimeMax": 1,
       "checkToSpawnTimer": 15,
       "pendingBotsToTrigger": 1,
       "nonWaveSpawnBotsLimitPerPlayer": 20
@@ -134,18 +152,18 @@
       "disableFollowers": false,
       "time": -1,
       "spawnChance": {
-        "bigmap": 30,
+        "bigmap": 10,
         "factory4_day": 0,
         "factory4_night": 0,
         "interchange": 0,
         "laboratory": 0,
-        "lighthouse": 30,
+        "lighthouse": 10,
         "rezervbase": 0,
         "sandbox": 0,
         "sandbox_high": 0,
-        "shoreline": 30,
+        "shoreline": 10,
         "tarkovstreets": 0,
-        "woods": 30,
+        "woods": 10,
         "labyrinth": 0
       },
       "bossZone": {
@@ -590,18 +608,18 @@
       "disableFollowers": false,
       "time": -1,
       "spawnChance": {
-        "bigmap": 30,
+        "bigmap": 5,
         "factory4_day": 0,
         "factory4_night": 0,
         "interchange": 0,
         "laboratory": 0,
-        "lighthouse": 30,
+        "lighthouse": 5,
         "rezervbase": 0,
         "sandbox": 0,
         "sandbox_high": 0,
-        "shoreline": 30,
+        "shoreline": 5,
         "tarkovstreets": 0,
-        "woods": 30,
+        "woods": 5,
         "labyrinth": 0
       },
       "bossZone": {
@@ -625,18 +643,18 @@
       "disableFollowers": false,
       "time": -1,
       "spawnChance": {
-        "bigmap": 15,
+        "bigmap": 25,
         "factory4_day": 0,
-        "factory4_night": 20,
+        "factory4_night": 12,
         "interchange": 0,
         "laboratory": 0,
         "lighthouse": 0,
         "rezervbase": 0,
         "sandbox": 0,
-        "sandbox_high": 44,
-        "shoreline": 15,
+        "sandbox_high": 2,
+        "shoreline": 25,
         "tarkovstreets": 0,
-        "woods": 15,
+        "woods": 30,
         "labyrinth": 0
       },
       "bossZone": {
@@ -807,5 +825,8 @@
     "allowUpdateChecks": false,
     "requireAuthCode": false,
     "authCode": "Kitten Mittons"
+  },
+  "presetConfig": {
+    "enable": true
   }
 }

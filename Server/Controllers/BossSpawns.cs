@@ -17,9 +17,134 @@ public class BossSpawns(
     ICloner cloner,
     WeightedRandomHelper weightedRandomHelper,
     RandomUtil randomUtil,
-    ConfigServer configServer)
+    ConfigServer configServer,
+    PresetManager presetManager)
 {
     private readonly BotConfig _botConfig = configServer.GetConfig<BotConfig>();
+
+    // Mirrors MOAR's bossPerformanceHash: caps heavy boss entourages (and a couple of
+    // chances) to reduce bot load. EscortAmount is a weighted comma list SPT rolls per
+    // spawn; Chance (when set) overrides the configured spawn chance for that boss.
+    private static readonly Dictionary<string, (string? EscortAmount, int? Chance, bool DropSupports)> BossPerformanceCaps = new()
+    {
+        ["bossZryachiy"] = ("1,1,1,1,2", 50, true),  // Lighthouse: halve chance, vary escort (mostly 1)
+        ["bossBully"]    = ("2,3", null, true),       // Reshala escort capped
+        ["bossBoar"]     = ("1,2,2,2", null, false),  // Boar (streets) escort capped, KEEP supports
+        ["bossKojaniy"]  = ("1,2,2", null, true),     // Shturman escort capped
+    };
+
+    private static void ApplyPerformanceCaps(BossLocationSpawn? spawn)
+    {
+        if (spawn?.BossName is null) return;
+        if (!BossPerformanceCaps.TryGetValue(spawn.BossName, out var cap)) return;
+
+        if (cap.EscortAmount is not null)
+        {
+            spawn.BossEscortAmount = cap.EscortAmount;
+            if (cap.DropSupports) spawn.Supports = null!; // drop heavy support groups (e.g. Zryachiy snipers)
+        }
+        if (cap.Chance is not null) spawn.BossChance = cap.Chance.Value;
+    }
+
+    /// <summary>
+    /// boss-rotation preset: for each present main boss, swap it for a random DIFFERENT
+    /// boss from the rotation pool. The injected boss is forced to 100% spawn and keeps
+    /// the original boss's zone. Runs AFTER performance caps so the pool's escort/support
+    /// values (not the capped originals) are what spawns.
+    /// </summary>
+    private void ApplyBossRotation(List<BossLocationSpawn> bossesForMap)
+    {
+        if (!presetManager.RotateMainBosses) return;
+        var pool = ModConfig.MainBossRotationPool;
+        if (pool is null || pool.Count < 2) return;
+
+        var poolNames = pool.Select(b => b.BossName).Where(n => n is not null).ToHashSet();
+        var difficultyWeights = ModConfig.Config.BossDifficulty;
+
+        for (var i = 0; i < bossesForMap.Count; i++)
+        {
+            var original = bossesForMap[i];
+            if (original.BossName is null || !poolNames.Contains(original.BossName)) continue;
+
+            var candidates = pool.Where(b => b.BossName != original.BossName).ToList();
+            if (candidates.Count == 0) continue;
+
+            var pick = candidates[randomUtil.GetInt(0, candidates.Count - 1)];
+            var injected = cloner.Clone(pick);
+            if (injected is null) continue;
+
+            injected.BossChance = 100;
+            injected.BossZone = original.BossZone;
+            injected.BossDifficulty = weightedRandomHelper.GetWeightedValue(difficultyWeights);
+            injected.BossEscortDifficulty = weightedRandomHelper.GetWeightedValue(difficultyWeights);
+            bossesForMap[i] = injected;
+
+            logger.Info($"[ABPS] boss-rotation: {original.BossName} -> {injected.BossName} @ zone='{injected.BossZone}'");
+        }
+    }
+
+    /// <summary>
+    /// roaming-goon-squad preset: guarantee the Goons squad on every map. If the map
+    /// already has a knight, replace it with our example version keeping the map's zone.
+    /// If no knight is present, inject our example as-is (BossZone "" = roams anywhere).
+    /// </summary>
+    private void ApplyRoamingGoonSquad(List<BossLocationSpawn> bossesForMap)
+    {
+        if (!presetManager.RoamingGoonSquad) return;
+        if (ModConfig.InjectionExamples is null ||
+            !ModConfig.InjectionExamples.TryGetValue("knight", out var knightTemplate) ||
+            knightTemplate is null) return;
+
+        var difficultyWeights = ModConfig.Config.BossDifficulty;
+        var foundKnight = false;
+
+        for (var i = 0; i < bossesForMap.Count; i++)
+        {
+            if (bossesForMap[i].BossName != "bossKnight") continue;
+
+            var replacement = cloner.Clone(knightTemplate);
+            if (replacement is null) continue;
+            replacement.BossZone = bossesForMap[i].BossZone; // adopt the map's knight zone
+            replacement.BossDifficulty = weightedRandomHelper.GetWeightedValue(difficultyWeights);
+            replacement.BossEscortDifficulty = weightedRandomHelper.GetWeightedValue(difficultyWeights);
+            bossesForMap[i] = replacement;
+            foundKnight = true;
+            logger.Info($"[ABPS] roaming-goon-squad: replaced map knight @ zone='{replacement.BossZone}'");
+        }
+
+        if (!foundKnight)
+        {
+            var injected = cloner.Clone(knightTemplate);
+            if (injected is null) return;
+            injected.BossDifficulty = weightedRandomHelper.GetWeightedValue(difficultyWeights);
+            injected.BossEscortDifficulty = weightedRandomHelper.GetWeightedValue(difficultyWeights);
+            injected.Time = randomUtil.GetInt(300, 1200); // roaming spawn: random 5-20 min in
+            bossesForMap.Add(injected); // BossZone stays "" -> roams
+            logger.Info($"[ABPS] roaming-goon-squad: injected roaming knight (no existing knight) @ time={injected.Time}s");
+        }
+    }
+
+    /// <summary>
+    /// Injects one roaming squad (BossZone "") from an Examples.json template on every
+    /// map. Pure injection - never replaces existing spawns. Used by the
+    /// roaming-rogue-squad / roaming-raider-squad presets.
+    /// </summary>
+    private void InjectRoamingSquad(List<BossLocationSpawn> bossesForMap, bool enabled, string templateKey)
+    {
+        if (!enabled) return;
+        if (ModConfig.InjectionExamples is null ||
+            !ModConfig.InjectionExamples.TryGetValue(templateKey, out var template) ||
+            template is null) return;
+
+        var difficultyWeights = ModConfig.Config.BossDifficulty;
+        var injected = cloner.Clone(template);
+        if (injected is null) return;
+        injected.BossDifficulty = weightedRandomHelper.GetWeightedValue(difficultyWeights);
+        injected.BossEscortDifficulty = weightedRandomHelper.GetWeightedValue(difficultyWeights);
+        injected.Time = randomUtil.GetInt(300, 1200); // roaming spawn: random 5-20 min in
+        bossesForMap.Add(injected); // BossZone stays "" -> roams
+        logger.Info($"[ABPS] inject-squad: added roaming '{templateKey}' ({injected.BossName}) @ time={injected.Time}s");
+    }
 
     public List<BossLocationSpawn> GetCustomMapData(string location, double escapeTimeLimit)
     {
@@ -51,6 +176,11 @@ public class BossSpawns(
                 foreach (var bossSpawn in bossDefaultData)
                 {
                     bossDefaultData[0].BossDifficulty = weightedRandomHelper.GetWeightedValue(difficultyWeights);
+                    ApplyPerformanceCaps(bossSpawn);
+                    // exUsec roaming rogues on Lighthouse: keep vanilla per-zone escorts/chances
+                    // but shave 30% off each zone whose chance is above 20, to reduce bot load.
+                    if (boss == "exUsec" && location == "lighthouse" && (bossSpawn.BossChance ?? 0) > 20)
+                        bossSpawn.BossChance = (bossSpawn.BossChance ?? 0) - 30;
                     bossesForMap.Add(bossSpawn);
                 }
                 if (!(bossData.AddExtraSpawns ?? false)) continue;
@@ -92,8 +222,14 @@ public class BossSpawns(
             bossDefaultData[0].BossDifficulty = weightedRandomHelper.GetWeightedValue(difficultyWeights);
             bossDefaultData[0].BossEscortDifficulty = weightedRandomHelper.GetWeightedValue(difficultyWeights);
             bossDefaultData[0].Time = bossData.Time;
+            ApplyPerformanceCaps(bossDefaultData[0]);
             bossesForMap.Add(bossDefaultData[0]);
         }
+
+        ApplyBossRotation(bossesForMap);
+        ApplyRoamingGoonSquad(bossesForMap);
+        InjectRoamingSquad(bossesForMap, presetManager.InjectRogueSquad, "rogue");
+        InjectRoamingSquad(bossesForMap, presetManager.InjectRaiderSquad, "raider");
 
         return bossesForMap;
     }

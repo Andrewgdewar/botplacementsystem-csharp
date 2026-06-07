@@ -177,6 +177,9 @@ namespace acidphantasm_botplacementsystem.Patches
                             validSpawnLocations).HandleExceptions();
 
                         Utility.PmcsSpawnedThisRaid += escortPointCount;
+                        // PMC groups consume the shared rate-limit budget but are never
+                        // gated by it - only scavs get throttled.
+                        SpawnRateLimiter.Record(escortPointCount, Singleton<AbstractGame>.Instance?.PastTime ?? 0f, "pmc", true);
                         if (Plugin.DebugLogging)
                             Logger.LogInfo($"[ABPS] PMC spawned: {Utility.PmcsSpawnedThisRaid}/{maxPmcs} on {location}");
 

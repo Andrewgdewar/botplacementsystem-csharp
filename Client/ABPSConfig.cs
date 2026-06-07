@@ -1,12 +1,18 @@
 using BepInEx.Configuration;
 using System;
+using UnityEngine;
 
 namespace acidphantasm_botplacementsystem
 {
     internal static class AbpsConfig
     {
         private static int _loadOrder = 200;
-        
+
+        private const string PresetConfigSection = "0. Preset Settings";
+        private static ConfigEntry<bool> _announcePresetOnRaidStart;
+        private static ConfigEntry<bool> _enableAnnouncePresetHotkey;
+        private static ConfigEntry<KeyboardShortcut> _announcePresetHotkey;
+
         private const string DespawnConfig = "1. Despawn Settings";
         private static ConfigEntry<bool> _despawnFurthest;
         private static ConfigEntry<bool> _despawnPmcs;
@@ -92,6 +98,12 @@ namespace acidphantasm_botplacementsystem
         private static ConfigEntry<float> _woodsScavSpawnDistanceCheck;
         private static ConfigEntry<float> _labyrinthScavSpawnDistanceCheck;
         
+        private const string RateLimitConfig = "5b. Spawn Rate Limit";
+        private static ConfigEntry<bool> _spawnRateLimitEnabled;
+        private static ConfigEntry<int> _spawnRateLimitPerWindow;
+        private static ConfigEntry<int> _spawnRateLimitWindowSeconds;
+        private static ConfigEntry<bool> _spawnRateLimitDebugLogging;
+
         private const string DebugConfig = "6. Debug Settings";
         private static ConfigEntry<bool> _enableDebug;
         private static ConfigEntry<float> _directionalBias;
@@ -138,6 +150,37 @@ namespace acidphantasm_botplacementsystem
 
         public static void InitAbpsConfig(ConfigFile config)
         {
+            // Preset Settings (section "0." so it sorts to the top of F12)
+            _announcePresetOnRaidStart = config.Bind(
+                PresetConfigSection,
+                "Announce Preset On Raid Start",
+                true,
+                new ConfigDescription("Show the active ABPS preset name as an in-game notification at the start of every raid.",
+                    null,
+                    new ConfigurationManagerAttributes { Order = _loadOrder-- }));
+            Plugin.AnnouncePresetOnRaidStart = _announcePresetOnRaidStart.Value;
+            _announcePresetOnRaidStart.SettingChanged += ABPS_SettingChanged;
+
+            _enableAnnouncePresetHotkey = config.Bind(
+                PresetConfigSection,
+                "Enable Announce Hotkey",
+                true,
+                new ConfigDescription("If enabled, pressing the hotkey while in a raid re-announces the active preset.",
+                    null,
+                    new ConfigurationManagerAttributes { Order = _loadOrder-- }));
+            Plugin.EnableAnnouncePresetHotkey = _enableAnnouncePresetHotkey.Value;
+            _enableAnnouncePresetHotkey.SettingChanged += ABPS_SettingChanged;
+
+            _announcePresetHotkey = config.Bind(
+                PresetConfigSection,
+                "Announce Preset Hotkey",
+                new KeyboardShortcut(KeyCode.Home),
+                new ConfigDescription("Press this key in-raid to re-announce the active ABPS preset. Hold modifiers as configured.",
+                    null,
+                    new ConfigurationManagerAttributes { Order = _loadOrder-- }));
+            Plugin.AnnouncePresetHotkey = _announcePresetHotkey.Value;
+            _announcePresetHotkey.SettingChanged += ABPS_SettingChanged;
+
             // Despawn Settings
             _despawnFurthest = config.Bind(
                 DespawnConfig,
@@ -183,7 +226,7 @@ namespace acidphantasm_botplacementsystem
             _customsMapLimit = config.Bind(
                 GeneralConfig,
                 "Max Bots - Customs",
-                23,
+                26,
                 new ConfigDescription("Max bots allowed on map, value is ignored by certain bots.\nStarting PMCs ignore the cap by default, if you want to change this you must do so in the server config.\n\nChanges do not take effect until next raid.",
                 new AcceptableValueRange<int>(1, 50),
                 new ConfigurationManagerAttributes { Order = _loadOrder-- }));
@@ -203,7 +246,7 @@ namespace acidphantasm_botplacementsystem
             _interchangeMapLimit = config.Bind(
                 GeneralConfig,
                 "Max Bots - Interchange",
-                22,
+                28,
                 new ConfigDescription("Max bots allowed on map, value is ignored by certain bots.\nStarting PMCs ignore the cap by default, if you want to change this you must do so in the server config.\n\nChanges do not take effect until next raid.",
                 new AcceptableValueRange<int>(1, 50),
                 new ConfigurationManagerAttributes { Order = _loadOrder-- }));
@@ -223,7 +266,7 @@ namespace acidphantasm_botplacementsystem
             _lighthouseMapLimit = config.Bind(
                 GeneralConfig,
                 "Max Bots - Lighthouse",
-                22,
+                28,
                 new ConfigDescription("Max bots allowed on map, value is ignored by certain bots.\nStarting PMCs ignore the cap by default, if you want to change this you must do so in the server config.\n\nChanges do not take effect until next raid.",
                 new AcceptableValueRange<int>(1, 50),
                 new ConfigurationManagerAttributes { Order = _loadOrder-- }));
@@ -233,7 +276,7 @@ namespace acidphantasm_botplacementsystem
             _reserveMapLimit = config.Bind(
                 GeneralConfig,
                 "Max Bots - Reserve",
-                22,
+                28,
                 new ConfigDescription("Max bots allowed on map, value is ignored by certain bots.\nStarting PMCs ignore the cap by default, if you want to change this you must do so in the server config.\n\nChanges do not take effect until next raid.",
                 new AcceptableValueRange<int>(1, 50),
                 new ConfigurationManagerAttributes { Order = _loadOrder-- }));
@@ -253,7 +296,7 @@ namespace acidphantasm_botplacementsystem
             _shorelineMapLimit = config.Bind(
                 GeneralConfig,
                 "Max Bots - Shoreline",
-                22,
+                28,
                 new ConfigDescription("Max bots allowed on map, value is ignored by certain bots.\nStarting PMCs ignore the cap by default, if you want to change this you must do so in the server config.\n\nChanges do not take effect until next raid.",
                 new AcceptableValueRange<int>(1, 50),
                 new ConfigurationManagerAttributes { Order = _loadOrder-- }));
@@ -263,7 +306,7 @@ namespace acidphantasm_botplacementsystem
             _streetsMapLimit = config.Bind(
                 GeneralConfig,
                 "Max Bots - Streets",
-                23,
+                29,
                 new ConfigDescription("Max bots allowed on map, value is ignored by certain bots.\nStarting PMCs ignore the cap by default, if you want to change this you must do so in the server config.\n\nChanges do not take effect until next raid.",
                 new AcceptableValueRange<int>(1, 50),
                 new ConfigurationManagerAttributes { Order = _loadOrder-- }));
@@ -273,7 +316,7 @@ namespace acidphantasm_botplacementsystem
             _woodsMapLimit = config.Bind(
                 GeneralConfig,
                 "Max Bots - Woods",
-                22,
+                28,
                 new ConfigDescription("Max bots allowed on map, value is ignored by certain bots.\nStarting PMCs ignore the cap by default, if you want to change this you must do so in the server config.\n\nChanges do not take effect until next raid.",
                 new AcceptableValueRange<int>(1, 50),
                 new ConfigurationManagerAttributes { Order = _loadOrder-- }));
@@ -621,6 +664,46 @@ namespace acidphantasm_botplacementsystem
             Plugin.HotzoneScavChance = _hotzoneScavChance.Value;
             _hotzoneScavChance.SettingChanged += ABPS_SettingChanged;
 
+            _spawnRateLimitEnabled = config.Bind(
+                RateLimitConfig,
+                "Enabled",
+                true,
+                new ConfigDescription("Limit total bots spawned across a rolling time window to reduce lag spikes.\nGates scavs only - PMC groups consume the budget but are never blocked, and boss/marksman spawns are never limited.",
+                null,
+                new ConfigurationManagerAttributes { Order = _loadOrder-- }));
+            Plugin.SpawnRateLimitEnabled = _spawnRateLimitEnabled.Value;
+            _spawnRateLimitEnabled.SettingChanged += ABPS_SettingChanged;
+
+            _spawnRateLimitPerWindow = config.Bind(
+                RateLimitConfig,
+                "Bots Per Window",
+                5,
+                new ConfigDescription("Max bots (scavs + PMCs) allowed to spawn within the rolling window before scavs are throttled.",
+                new AcceptableValueRange<int>(1, 50),
+                new ConfigurationManagerAttributes { Order = _loadOrder-- }));
+            Plugin.SpawnRateLimitPerWindow = _spawnRateLimitPerWindow.Value;
+            _spawnRateLimitPerWindow.SettingChanged += ABPS_SettingChanged;
+
+            _spawnRateLimitWindowSeconds = config.Bind(
+                RateLimitConfig,
+                "Window Seconds",
+                60,
+                new ConfigDescription("Length of the rolling window in seconds. Ex..5 bots per 60 seconds.",
+                new AcceptableValueRange<int>(5, 600),
+                new ConfigurationManagerAttributes { Order = _loadOrder-- }));
+            Plugin.SpawnRateLimitWindowSeconds = _spawnRateLimitWindowSeconds.Value;
+            _spawnRateLimitWindowSeconds.SettingChanged += ABPS_SettingChanged;
+
+            _spawnRateLimitDebugLogging = config.Bind(
+                RateLimitConfig,
+                "Debug Logging",
+                false,
+                new ConfigDescription("Log every recorded spawn (scav/pmc/boss/marksman) with rolling-window counts for review.",
+                null,
+                new ConfigurationManagerAttributes { Order = _loadOrder-- }));
+            Plugin.SpawnRateLimitDebugLogging = _spawnRateLimitDebugLogging.Value;
+            _spawnRateLimitDebugLogging.SettingChanged += ABPS_SettingChanged;
+
             _customsScavSpawnDistanceCheck = config.Bind(
                 ScavConfig, 
                 "Distance Limit - Customs", 
@@ -776,8 +859,8 @@ namespace acidphantasm_botplacementsystem
             _pickBiasPower = config.Bind(
                 GeneralConfig,
                 "Pick Bias Power",
-                1.6f,
-                new ConfigDescription("Steepness of the scav weighted pick. 0 = uniform random across the top 80 candidates. 1.0 = moderate close-bias. 1.6 = strong (recommended). 2.5 = very strong, almost always closest. 3.0+ = near-deterministic closest.",
+                0.6f,
+                new ConfigDescription("Steepness of the scav weighted pick. 0 = uniform random across the top 80 candidates. 0.6 = spread (recommended). 1.0 = moderate close-bias. 1.6 = strong. 2.5+ = almost always closest.",
                     new AcceptableValueRange<float>(0f, 3f),
                     new ConfigurationManagerAttributes { Order = _loadOrder-- }));
             Plugin.PickBiasPower = _pickBiasPower.Value;
@@ -786,8 +869,8 @@ namespace acidphantasm_botplacementsystem
             _pickBiasOffset = config.Bind(
                 GeneralConfig,
                 "Pick Bias Offset",
-                1f,
-                new ConfigDescription("Flattens the top of the scav weighted pick curve. 1 = sharp peak at closest (default). 5 = first 5 candidates similarly likely. 10 = first 10 similarly likely. Higher offset = less front-bias, more spread amongst near-by candidates.",
+                10f,
+                new ConfigDescription("Flattens the top of the scav weighted pick curve. 1 = sharp peak at closest. 5 = first 5 candidates similarly likely. 10 = first 10 similarly likely (recommended). Higher offset = less front-bias, more spread amongst near-by candidates.",
                     new AcceptableValueRange<float>(1f, 20f),
                     new ConfigurationManagerAttributes { Order = _loadOrder-- }));
             Plugin.PickBiasOffset = _pickBiasOffset.Value;
@@ -826,7 +909,7 @@ namespace acidphantasm_botplacementsystem
             _perPlayerScavMultiplier = config.Bind(
                 GeneralConfig,
                 "Per-Player Scav Multiplier",
-                0.3f,
+                0.15f,
                 new ConfigDescription("How much each extra player past the first scales the scav spawn budget.\n0.0 = same budget for any player count.\n0.2 = 5 players get 1.8x the solo budget (recommended).\n1.0 = vanilla acid behaviour: 5 players get 5x the solo budget.",
                     new AcceptableValueRange<float>(0f, 1f),
                     new ConfigurationManagerAttributes { Order = _loadOrder-- }));
@@ -876,7 +959,7 @@ namespace acidphantasm_botplacementsystem
             _scavScheduleMidBudgetPercent = config.Bind(
                 GeneralConfig,
                 "Scav Schedule Mid Budget Pct",
-                0.50f,
+                0.70f,
                 new ConfigDescription("Fraction of the per-player scav budget unlocked at the mid time point. Should be > Start, < 1.0.",
                     new AcceptableValueRange<float>(0f, 1f),
                     new ConfigurationManagerAttributes { Order = _loadOrder-- }));
@@ -937,6 +1020,10 @@ namespace acidphantasm_botplacementsystem
 
         private static void ABPS_SettingChanged(object sender, EventArgs e)
         {
+            Plugin.AnnouncePresetOnRaidStart = _announcePresetOnRaidStart.Value;
+            Plugin.EnableAnnouncePresetHotkey = _enableAnnouncePresetHotkey.Value;
+            Plugin.AnnouncePresetHotkey = _announcePresetHotkey.Value;
+
             Plugin.DespawnFurthest = _despawnFurthest.Value;
             Plugin.DespawnDistance = _despawnDistance.Value;
             
@@ -996,6 +1083,11 @@ namespace acidphantasm_botplacementsystem
             Plugin.StreetsPmcSpawnDistanceCheck = _streetsPmcSpawnDistanceCheck.Value;
             Plugin.WoodsPmcSpawnDistanceCheck = _woodsPmcSpawnDistanceCheck.Value;
             Plugin.LabyrinthPmcSpawnDistanceCheck = _labyrinthPmcSpawnDistanceCheck.Value;
+
+            Plugin.SpawnRateLimitEnabled = _spawnRateLimitEnabled.Value;
+            Plugin.SpawnRateLimitPerWindow = _spawnRateLimitPerWindow.Value;
+            Plugin.SpawnRateLimitWindowSeconds = _spawnRateLimitWindowSeconds.Value;
+            Plugin.SpawnRateLimitDebugLogging = _spawnRateLimitDebugLogging.Value;
 
             Plugin.SoftCap = _softCap.Value;
             Plugin.PScavChance = _pScavChance.Value;

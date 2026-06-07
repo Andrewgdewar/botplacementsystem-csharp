@@ -19,6 +19,14 @@ public record AbpsConfig
 
     [JsonPropertyName("configAppSettings")]
     public required ConfigAppSettings ConfigAppSettings { get; set; }
+
+    [JsonPropertyName("presetConfig")]
+    public PresetConfig? PresetConfig { get; set; }
+}
+
+public record PresetConfig
+{
+    [JsonPropertyName("enable")] public bool Enable { get; set; }
 }
 
 public record PmcTypeChance
@@ -365,6 +373,12 @@ public record WaveConfig
     [JsonPropertyName("maxGroupCount")] public int MaxGroupCount { get; set; }
     [JsonPropertyName("maxBotsPerWave")] public int MaxBotsPerWave { get; set; }
 
+    // Weighted escort-count distribution for wave PMCs, e.g. "0,0,0,1,1,2,3".
+    // SPT picks one value uniformly at random per wave (so repeat values to
+    // weight them) and generates that many escort profiles in addition to the
+    // leader. "0" = solo. Empty/null falls back to solo.
+    [JsonPropertyName("escortAmount")] public string? EscortAmount { get; set; }
+
     [JsonPropertyName("delayBeforeFirstWave")] public int DelayBeforeFirstWave { get; set; }
 
     [JsonPropertyName("secondsBetweenWaves")] public int SecondsBetweenWaves { get; set; }
@@ -404,6 +418,14 @@ public record ScavStartingConfig
     [JsonPropertyName("enable")] public bool Enable { get; set; }
     [JsonPropertyName("maxBotSpawns")] public required ValidLocationInt MaxBotSpawns { get; set; }
     [JsonPropertyName("startingMarksman")] public bool StartingMarksman { get; set; }
+    // Marksman (sniper) wave spawn-time window in seconds. The wave fires at a random
+    // time within [min, max]. Defaults to 60-300 (1-5 min) if omitted.
+    [JsonPropertyName("marksmanTimeMin")] public int? MarksmanTimeMin { get; set; }
+    [JsonPropertyName("marksmanTimeMax")] public int? MarksmanTimeMax { get; set; }
+    // Per-map max number of snipers (one per nest). Caps how many sniper nests are
+    // used. Bounded by the number of snipe zones the map actually has. If omitted
+    // for a map, falls back to 3.
+    [JsonPropertyName("maxMarksmanSpawns")] public ValidLocationInt? MaxMarksmanSpawns { get; set; }
 }
 
 public record ScavConfig
