@@ -628,18 +628,18 @@
       "disableFollowers": false,
       "time": -1,
       "spawnChance": {
-        "bigmap": 15,
+        "bigmap": 25,
         "factory4_day": 0,
-        "factory4_night": 20,
+        "factory4_night": 12,
         "interchange": 0,
         "laboratory": 0,
         "lighthouse": 0,
         "rezervbase": 0,
         "sandbox": 0,
-        "sandbox_high": 44,
-        "shoreline": 15,
+        "sandbox_high": 2,
+        "shoreline": 25,
         "tarkovstreets": 0,
-        "woods": 15,
+        "woods": 30,
         "labyrinth": 0
       },
       "bossZone": {
