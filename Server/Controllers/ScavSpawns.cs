@@ -112,16 +112,20 @@ public class ScavSpawns(
             ? snipeZones.OrderBy(_ => randomUtil.GetInt(0, 100000)).ToList()
             : new List<string>();
 
-        while (currentCount < scavCap)
+        var isMarksman = botRole != "assault";
+
+        // Marksman ignores the scav cap (scavCap/hardCap) - it is bounded only by
+        // marksmanMax and available snipe zones (handled by the inner break below).
+        while (isMarksman || currentCount < scavCap)
         {
-            if (currentCount >= hardCap) break;
+            if (!isMarksman && currentCount >= hardCap) break;
             var scavDefaultData = cloner.Clone(ModConfig.ScavDefaults);
             var selectedSpawnZone =
                 location.Contains("factory") || (botRole == "assault" && location.Contains("sandbox")) || location.Contains("labyrinth") || !availableSpawnZones.HasValues()
                     ? ""
                     : availableSpawnZones.GetRandomValue();
 
-            if (botRole != "assault")
+            if (isMarksman)
             {
                 // Exact total sniper count: stop at marksmanMax, reuse zones via wraparound.
                 if (marksmanCount >= marksmanMax || shuffledSnipeZones.Count == 0) break;
