@@ -101,44 +101,27 @@ public class ScavSpawns(
             : new ExhaustableArray<string>(GetMarksmanSpawnZones(location), randomUtil, cloner);
 
         var marksmanCount = 0;
-        // Per-map cap on the TOTAL number of snipers. Falls back to 3 if unset.
-        var marksmanMax = ModConfig.Config.ScavConfig.StartingScavs.MaxMarksmanSpawns != null
-            && ModConfig.Config.ScavConfig.StartingScavs.MaxMarksmanSpawns.TryGetValue(location, out var perMapMarksmanMax)
-                ? perMapMarksmanMax
-                : 3;
-        // Snipe zones shuffled once. Snipers are placed one-per-zone in order and wrap
-        // around if marksmanMax exceeds the zone count (so a nest can hold 2+ snipers).
-        var shuffledSnipeZones = botRole != "assault" && GetMarksmanSpawnZones(location) is { Count: > 0 } snipeZones
-            ? snipeZones.OrderBy(_ => randomUtil.GetInt(0, 100000)).ToList()
-            : new List<string>();
 
-        var isMarksman = botRole != "assault";
-
-        // Marksman ignores the scav cap (scavCap/hardCap) - it is bounded only by
-        // marksmanMax and available snipe zones (handled by the inner break below).
-        while (isMarksman || currentCount < scavCap)
+        while (currentCount < scavCap)
         {
-            if (!isMarksman && currentCount >= hardCap) break;
+            if (currentCount >= hardCap) break;
             var scavDefaultData = cloner.Clone(ModConfig.ScavDefaults);
             var selectedSpawnZone =
                 location.Contains("factory") || (botRole == "assault" && location.Contains("sandbox")) || location.Contains("labyrinth") || !availableSpawnZones.HasValues()
                     ? ""
                     : availableSpawnZones.GetRandomValue();
 
-            if (isMarksman)
+            if (botRole != "assault")
             {
-                // Exact total sniper count: stop at marksmanMax, reuse zones via wraparound.
-                if (marksmanCount >= marksmanMax || shuffledSnipeZones.Count == 0) break;
-                selectedSpawnZone = shuffledSnipeZones[marksmanCount % shuffledSnipeZones.Count];
+                if (!availableSpawnZones.HasValues() && string.IsNullOrEmpty(selectedSpawnZone)) break;
+                if (marksmanCount >= 3) break;
                 marksmanCount++;
             }
 
             if (scavDefaultData is null) continue;
             
             scavDefaultData.SlotsMin = botRole == "assault" ? 0 : 1;
-            // Assault scavs: 0-1 per wave. Marksman: exactly 1 sniper per wave, so the
-            // total sniper count equals maxMarksmanSpawns for the map.
-            scavDefaultData.SlotsMax = 1;
+            scavDefaultData.SlotsMax = botRole == "assault" ? 1 : 2;
             scavDefaultData.TimeMin = botRole == "assault" ? 3 : ModConfig.Config.ScavConfig.StartingScavs.MarksmanTimeMin ?? 60;
             scavDefaultData.TimeMax = botRole == "assault" ? 5 : ModConfig.Config.ScavConfig.StartingScavs.MarksmanTimeMax ?? 300;
             scavDefaultData.Number = currentCount;

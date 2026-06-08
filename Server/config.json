@@ -103,23 +103,8 @@
         "labyrinth": 0
       },
       "startingMarksman": true,
-      "marksmanTimeMin": -1,
-      "marksmanTimeMax": 180,
-      "maxMarksmanSpawns": {
-        "bigmap": 3,
-        "factory4_day": 0,
-        "factory4_night": 0,
-        "interchange": 0,
-        "laboratory": 0,
-        "lighthouse": 1,
-        "rezervbase": 0,
-        "sandbox": 2,
-        "sandbox_high": 2,
-        "shoreline": 3,
-        "tarkovstreets": 4,
-        "woods": 1,
-        "labyrinth": 0
-      }
+      "marksmanTimeMin": 60,
+      "marksmanTimeMax": 300
     },
     "waves": {
       "enable": true,
