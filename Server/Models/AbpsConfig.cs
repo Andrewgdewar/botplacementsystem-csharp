@@ -422,10 +422,6 @@ public record ScavStartingConfig
     // time within [min, max]. Defaults to 60-300 (1-5 min) if omitted.
     [JsonPropertyName("marksmanTimeMin")] public int? MarksmanTimeMin { get; set; }
     [JsonPropertyName("marksmanTimeMax")] public int? MarksmanTimeMax { get; set; }
-    // Per-map max number of snipers (one per nest). Caps how many sniper nests are
-    // used. Bounded by the number of snipe zones the map actually has. If omitted
-    // for a map, falls back to 3.
-    [JsonPropertyName("maxMarksmanSpawns")] public ValidLocationInt? MaxMarksmanSpawns { get; set; }
 }
 
 public record ScavConfig
